@@ -1,0 +1,265 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* Self-hosted. Iosevka is the whole voice: engineered, narrow, true tabular
+   figures at small sizes. Nothing here falls back to a platform face.
+   Subsetted by scripts/subset-fonts.py to the glyphs this interface draws —
+   3.78 MB of upstream latin weights down to 24 KB, woff2 only, ligatures
+   stripped because a readout must never fuse `->` into an arrow. */
+@font-face {
+  font-family: "Iosevka";
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url("./assets/fonts/iosevka-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Iosevka";
+  font-style: normal;
+  font-weight: 500;
+  font-display: block;
+  src: url("./assets/fonts/iosevka-500.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Iosevka";
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  src: url("./assets/fonts/iosevka-700.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Iosevka";
+  font-style: normal;
+  font-weight: 800;
+  font-display: block;
+  src: url("./assets/fonts/iosevka-800.woff2") format("woff2");
+}
+
+@theme inline {
+  --font-sans: "Iosevka", ui-monospace, monospace;
+  --font-mono: "Iosevka", ui-monospace, monospace;
+  --font-heading: "Iosevka", ui-monospace, monospace;
+
+  --color-void: var(--ng-void);
+  --color-field: var(--ng-field);
+  --color-plate: var(--ng-plate);
+  --color-rule: var(--ng-rule);
+  --color-rule-bright: var(--ng-rule-bright);
+  --color-dim: var(--ng-dim);
+  --color-text: var(--ng-text);
+  --color-bright: var(--ng-bright);
+  --color-signal: var(--ng-signal);
+  --color-ok: var(--ng-ok);
+  --color-warn: var(--ng-warn);
+  --color-alert: var(--ng-alert);
+
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+
+  --radius-sm: 1px;
+  --radius-md: 1px;
+  --radius-lg: 2px;
+  --radius-xl: 2px;
+  --radius-2xl: 2px;
+  --radius-3xl: 2px;
+  --radius-4xl: 2px;
+}
+
+/* ── Netgraph ────────────────────────────────────────────────────────────
+   Dark is not a genre choice here. The scene is a player at 11pm who
+   alt-tabs out of a dark game for twenty seconds; a light window is a
+   flashbang. Restrained is not taste either: this is a colour-correction
+   tool, so saturated chrome would bias the very judgement the user is
+   making. Neutrals carry the surface; amber is the only accent; the three
+   state hues appear on state marks and nowhere else.            */
+:root {
+  --ng-void: #07080a;
+  --ng-field: #0d0f12;
+  --ng-plate: #15181c;
+  --ng-rule: #21262c;
+  --ng-rule-bright: #38414a;
+  --ng-dim: #8a939d;
+  --ng-text: #c2c9d1;
+  --ng-bright: #f0f4f8;
+  --ng-signal: #f0a62b;
+  --ng-ok: #54c98a;
+  --ng-warn: #e8c23f;
+  --ng-alert: #e8645c;
+
+  /* One size in the field. Rank is weight, case, reversal and rule.
+     Exactly one exception exists: --ng-monument. */
+  --ng-size: 0.8125rem;
+  --ng-lh: 1.15rem;
+  --ng-monument: clamp(2.75rem, 7vw, 6rem);
+  --ng-track: 0.08em;
+  --ng-cell: 2rem;
+
+  --background: var(--ng-void);
+  --foreground: var(--ng-text);
+  --card: var(--ng-field);
+  --card-foreground: var(--ng-text);
+  --popover: var(--ng-plate);
+  --popover-foreground: var(--ng-text);
+  --primary: var(--ng-signal);
+  --primary-foreground: var(--ng-void);
+  --secondary: var(--ng-plate);
+  --secondary-foreground: var(--ng-text);
+  --muted: var(--ng-plate);
+  --muted-foreground: var(--ng-dim);
+  --accent: var(--ng-plate);
+  --accent-foreground: var(--ng-bright);
+  --destructive: var(--ng-alert);
+  --border: var(--ng-rule);
+  --input: var(--ng-rule);
+  --ring: var(--ng-signal);
+  --radius: 1px;
+}
+
+@layer base {
+  * {
+    border-color: var(--ng-rule);
+  }
+
+  html {
+    font-family: var(--font-sans);
+    font-size: 16px;
+    color-scheme: dark;
+  }
+
+  body {
+    margin: 0;
+    background: var(--ng-void);
+    color: var(--ng-text);
+    font-size: var(--ng-size);
+    line-height: var(--ng-lh);
+    /* Every figure in this interface is a measurement. They must not
+       shift width as they tick. */
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* The surfaces nobody draws still carry the design. */
+  ::selection {
+    background: var(--ng-signal);
+    color: var(--ng-void);
+  }
+
+  :root {
+    caret-color: var(--ng-signal);
+    accent-color: var(--ng-signal);
+    scrollbar-color: var(--ng-rule-bright) transparent;
+    scrollbar-width: thin;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--ng-rule);
+    border: 3px solid var(--ng-void);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--ng-rule-bright);
+  }
+
+  :focus-visible {
+    outline: 1px solid var(--ng-signal);
+    outline-offset: 2px;
+  }
+
+  button {
+    font: inherit;
+    letter-spacing: inherit;
+  }
+}
+
+@layer components {
+  /* A label is 13px like everything else. It earns its rank from case,
+     tracking and dimming — never from being smaller. */
+  .ng-label {
+    text-transform: uppercase;
+    letter-spacing: var(--ng-track);
+    color: var(--ng-dim);
+    font-weight: 500;
+  }
+
+  .ng-value {
+    color: var(--ng-bright);
+    font-weight: 500;
+  }
+
+  /* Reversal is the strongest rank this field has, so only one element
+     per region may take it. */
+  .ng-reverse {
+    background: var(--ng-signal);
+    color: var(--ng-void);
+    font-weight: 700;
+  }
+
+  /* Inert, clamped or unavailable. The hatch is literal and unmissable,
+     because "this control is doing nothing right now" is the single most
+     expensive thing this app could fail to tell you. */
+  .ng-hatch {
+    background-image: repeating-linear-gradient(
+      45deg,
+      transparent 0 3px,
+      color-mix(in srgb, var(--ng-dim) 26%, transparent) 3px 4px
+    );
+  }
+
+  .ng-rule-t {
+    border-top: 1px solid var(--ng-rule);
+  }
+  .ng-rule-b {
+    border-bottom: 1px solid var(--ng-rule);
+  }
+}
+
+/* The one authored moment: a value you change is shown travelling the real
+   device path, framebuffer to panel. Parked entirely under reduced motion. */
+@keyframes ng-propagate {
+  0% {
+    transform: scaleX(0);
+    opacity: 0;
+  }
+  18% {
+    opacity: 1;
+  }
+  100% {
+    transform: scaleX(1);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
