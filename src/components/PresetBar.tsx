@@ -67,9 +67,9 @@ export function PresetBar({ presets, activeId, onSelect, onScan }: Props) {
         <span className="ng-label shrink-0">BOUND</span>
         {active?.exe ? (
           <>
-            <span className="ng-value min-w-0 truncate">{basename(active.exe)}</span>
+            <span className="ng-selectable ng-value min-w-0 truncate">{basename(active.exe)}</span>
             <span
-              className="hidden min-w-0 flex-1 truncate text-dim sm:block"
+              className="ng-selectable hidden min-w-0 flex-1 truncate text-dim sm:block"
               title={active.exe}
             >
               {active.exe}

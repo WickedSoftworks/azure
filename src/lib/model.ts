@@ -40,6 +40,14 @@ export interface Channel {
   unit: "percent" | "degrees" | "factor";
   stage: Stage;
   fidelity: Fidelity;
+  /**
+   * The sub-range that actually reaches the panel, when something outside
+   * Azure is limiting it. Absent means the whole range is reachable.
+   * Windows clamps gamma ramps to roughly +/-0.5 of linear until
+   * GdiIcmGammaRange is unlocked, so the ends of that slider are dead and
+   * the track has to show it.
+   */
+  reachable?: [number, number];
   /** Present only when fidelity is not `exact`; states the machine fact. */
   note?: string;
 }
@@ -117,6 +125,7 @@ export const CHANNELS: Channel[] = [
     unit: "factor",
     stage: "lut",
     fidelity: "clamped",
+    reachable: [70, 140],
     note: "Windows is clamping this range until GdiIcmGammaRange is unlocked",
   },
   {
@@ -206,4 +215,18 @@ export interface SessionState {
   exclusiveFullscreen: boolean;
   displays: DisplayInfo[];
   gammaRangeUnlocked: boolean;
+}
+
+/**
+ * The channel table as it stands for this session. Unlocking the gamma range
+ * is a real state change, not a dismissed banner: the clamp lifts, the dead
+ * ends of the gamma track become reachable, and the fidelity badge changes.
+ */
+export function channelsFor(gammaRangeUnlocked: boolean): Channel[] {
+  if (!gammaRangeUnlocked) return CHANNELS;
+  return CHANNELS.map((c) =>
+    c.id === "gamma"
+      ? { ...c, fidelity: "exact" as const, reachable: undefined, note: undefined }
+      : c,
+  );
 }

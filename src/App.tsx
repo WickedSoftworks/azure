@@ -9,7 +9,13 @@ import { SignalChain } from "@/components/SignalChain";
 import { StatusStrip } from "@/components/StatusStrip";
 import { WarningRow } from "@/components/WarningRow";
 import { DEMO_PRESETS, DEMO_SESSION } from "@/lib/demo";
-import { CHANNELS, type ChannelId, type ColorState, type Stage } from "@/lib/model";
+import {
+  CHANNELS,
+  channelsFor,
+  type ChannelId,
+  type ColorState,
+  type Stage,
+} from "@/lib/model";
 
 export default function App() {
   const [session, setSession] = useState(DEMO_SESSION);
@@ -20,21 +26,27 @@ export default function App() {
   const [pulseStage, setPulseStage] = useState<Stage | null>(null);
   const [lutTarget, setLutTarget] = useState<string | "all">("all");
   const [log, setLog] = useState<LogEntry[]>([
-    { id: 3, time: "21:47:04", kind: "activate", subject: "VALORANT", detail: "focused · matched by full path", latencyUs: 1900 },
-    { id: 2, time: "21:47:04", kind: "warn", subject: "GAM", detail: "ramp clamped by GdiIcmGammaRange", latencyUs: 420 },
-    { id: 1, time: "21:47:04", kind: "apply", subject: "VIB SAT CON GAM", detail: "matrix + lut · 2 displays", latencyUs: 2300 },
+    { id: 3, time: "21:47:11", kind: "activate", subject: "VALORANT", detail: "focused · matched by full path", latencyUs: 1900 },
+    { id: 2, time: "21:46:58", kind: "warn", subject: "GAM", detail: "ramp clamped by GdiIcmGammaRange", latencyUs: 420 },
+    { id: 1, time: "21:46:57", kind: "apply", subject: "VIB SAT CON GAM", detail: "matrix + lut · 2 displays", latencyUs: 2300 },
   ]);
   const logId = useRef(4);
   const pulseTimer = useRef<number | undefined>(undefined);
+  const gammaUnlockedRef = useRef(DEMO_SESSION.gammaRangeUnlocked);
 
   const active = useMemo(
     () => presets.find((p) => p.id === session.activePresetId) ?? presets[0],
     [presets, session.activePresetId],
   );
 
+  const channels = useMemo(
+    () => channelsFor(session.gammaRangeUnlocked),
+    [session.gammaRangeUnlocked],
+  );
+
   const focusedChannel = useMemo(
-    () => CHANNELS.find((c) => c.id === focused)!,
-    [focused],
+    () => channels.find((c) => c.id === focused)!,
+    [channels, focused],
   );
 
   const setChannel = useCallback(
@@ -49,7 +61,7 @@ export default function App() {
       );
       setPulseStage(stage);
       setPulse((n) => n + 1);
-      const ch = CHANNELS.find((c) => c.id === id)!;
+      const ch = channelsFor(gammaUnlockedRef.current).find((c) => c.id === id)!;
       setLog((prev) =>
         [
           {
@@ -96,6 +108,10 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    gammaUnlockedRef.current = session.gammaRangeUnlocked;
+  }, [session.gammaRangeUnlocked]);
+
   useEffect(() => () => window.clearTimeout(pulseTimer.current), []);
 
   const gammaClamped = !session.gammaRangeUnlocked;
@@ -114,15 +130,26 @@ export default function App() {
           code="GAMMA CLAMPED"
           message="Windows limits gamma ramps until GdiIcmGammaRange is set to 256. Azure works without it at reduced range."
           actionLabel="UNLOCK FULL RANGE"
-          onAction={() =>
-            setSession((s) => ({ ...s, gammaRangeUnlocked: true }))
-          }
+          onAction={() => {
+            setSession((s) => ({ ...s, gammaRangeUnlocked: true }));
+            setLog((prev) => [
+              {
+                id: logId.current++,
+                time: new Date().toTimeString().slice(0, 8),
+                kind: "apply" as const,
+                subject: "GAM",
+                detail: "gamma range unlocked · full 0.40-2.80 reachable",
+                latencyUs: 1400,
+              },
+              ...prev,
+            ]);
+          }}
         />
       )}
 
-      <main className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] lg:overflow-hidden">
-        <div className="flex min-w-0 flex-col lg:min-h-0 lg:overflow-hidden lg:border-r lg:border-r-rule">
-          <div className="ng-rule-b grid grid-cols-[3ch_1fr_6ch] sm:grid-cols-[3ch_1fr_6ch_7ch_7ch] items-center gap-x-3 px-4 py-1.5">
+      <main className="flex min-h-0 flex-1 flex-col overflow-y-auto win:grid win:grid-cols-[minmax(0,1fr)_minmax(0,19rem)] win:overflow-hidden lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
+        <div className="flex min-w-0 flex-col win:min-h-0 win:overflow-hidden win:border-r win:border-r-rule">
+          <div className="ng-rule-b grid grid-cols-[3ch_1fr_6ch] sm:grid-cols-[3ch_1fr_6ch_7ch_8ch] items-center gap-x-3 px-4 py-1.5">
             <span className="ng-label">CH</span>
             <span className="ng-label">LEVEL</span>
             <span className="ng-label text-right">VALUE</span>
@@ -130,7 +157,7 @@ export default function App() {
             <span className="ng-label hidden sm:block">FIDELITY</span>
           </div>
 
-          {CHANNELS.map((c) => (
+          {channels.map((c) => (
             <ChannelRow
               key={c.id}
               channel={c}
@@ -168,7 +195,7 @@ export default function App() {
           </div>
         </div>
 
-        <aside className="ng-rule-t flex min-w-0 flex-col bg-field lg:border-t-0 lg:min-h-0 lg:overflow-y-auto">
+        <aside className="ng-rule-t flex min-w-0 flex-col bg-field win:border-t-0 win:min-h-0 win:overflow-y-auto">
           <Monument
             channel={focusedChannel}
             value={active.state[focused]}

@@ -32,11 +32,19 @@ export function ChannelRow({ channel, value, bypassed, onChange, onFocus }: Prop
   const filledFrom = Math.min(ratio, neutralRatio);
   const filledTo = Math.max(ratio, neutralRatio);
 
+  // A clamped channel is not inert — part of its range still reaches the
+  // panel. Hatching the whole row would overstate it; hatching the dead
+  // ends says exactly which part of this slider does nothing.
+  const reachFrom = channel.reachable
+    ? (channel.reachable[0] - channel.min) / span
+    : 0;
+  const reachTo = channel.reachable ? (channel.reachable[1] - channel.min) / span : 1;
+
   return (
     <div
       className={cn(
         "group grid items-center gap-x-3 px-4 h-[var(--ng-cell)]",
-        "grid-cols-[3ch_1fr_6ch] sm:grid-cols-[3ch_1fr_6ch_7ch_7ch]",
+        "grid-cols-[3ch_1fr_6ch] sm:grid-cols-[3ch_1fr_6ch_7ch_8ch]",
         "hover:bg-plate/60 focus-within:bg-plate/60",
       )}
       onPointerEnter={onFocus}
@@ -69,19 +77,22 @@ export function ChannelRow({ channel, value, bypassed, onChange, onFocus }: Prop
           {Array.from({ length: SEGMENTS }, (_, i) => {
             const at = (i + 0.5) / SEGMENTS;
             const lit = at >= filledFrom && at <= filledTo;
+            const unreachable = at < reachFrom || at > reachTo;
             const isNeutralMark = Math.abs(at - neutralRatio) < 0.5 / SEGMENTS;
             return (
               <span
                 key={i}
                 className={cn(
                   "flex-1",
-                  lit
-                    ? inert
-                      ? "bg-dim"
-                      : "bg-signal"
-                    : isNeutralMark
-                      ? "bg-rule-bright"
-                      : "bg-rule",
+                  unreachable
+                    ? "ng-hatch bg-void"
+                    : lit
+                      ? inert
+                        ? "bg-dim"
+                        : "bg-signal"
+                      : isNeutralMark
+                        ? "bg-rule-bright"
+                        : "bg-rule",
                 )}
               />
             );

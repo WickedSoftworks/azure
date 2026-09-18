@@ -86,7 +86,7 @@ export function SignalChain({ state, pulse, pulseStage, exclusiveFullscreen }: P
                     : "—"}
                 </span>
               </div>
-              <div className="px-2 text-dim">{inert ? inertNote : api}</div>
+              <div className="ng-selectable px-2 text-dim">{inert ? inertNote : api}</div>
             </div>
           );
         })}

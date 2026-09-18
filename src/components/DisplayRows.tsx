@@ -16,7 +16,7 @@ interface Props {
 export function DisplayRows({ displays, lutTarget, onTarget }: Props) {
   return (
     <section className="ng-rule-t">
-      <div className="ng-rule-b grid grid-cols-[1fr_6ch] sm:grid-cols-[1fr_6ch_7ch_7ch] items-center gap-x-3 px-4 py-1.5">
+      <div className="ng-rule-b grid grid-cols-[1fr_6ch] sm:grid-cols-[1fr_6ch_7ch_8ch] items-center gap-x-3 px-4 py-1.5">
         <span className="ng-label">DISPLAY</span>
         <span className="ng-label text-right">SIGNAL</span>
         <span className="ng-label hidden sm:block">MATRIX</span>
@@ -31,7 +31,7 @@ export function DisplayRows({ displays, lutTarget, onTarget }: Props) {
             type="button"
             onClick={() => onTarget(lutTarget === d.key ? "all" : d.key)}
             className={cn(
-              "grid w-full grid-cols-[1fr_6ch] sm:grid-cols-[1fr_6ch_7ch_7ch] items-center gap-x-3",
+              "grid w-full grid-cols-[1fr_6ch] sm:grid-cols-[1fr_6ch_7ch_8ch] items-center gap-x-3",
               "px-4 h-[var(--ng-cell)] text-left hover:bg-plate/60",
             )}
           >

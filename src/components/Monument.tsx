@@ -49,6 +49,20 @@ export function Monument({ channel, value, bypassed }: Props) {
       {channel.note && (
         <p className="mt-2 max-w-[46ch] text-dim">{channel.note}</p>
       )}
+
+      {channel.reachable && (
+        <p className="mt-1 max-w-[46ch]">
+          <span className="text-warn">Reaches the panel only between </span>
+          <span className="ng-value">
+            {formatValue(channel, channel.reachable[0])}
+          </span>
+          <span className="text-warn"> and </span>
+          <span className="ng-value">
+            {formatValue(channel, channel.reachable[1])}
+          </span>
+          <span className="text-warn">. The hatched ends do nothing.</span>
+        </p>
+      )}
     </div>
   );
 }

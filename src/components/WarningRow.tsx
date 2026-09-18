@@ -26,7 +26,7 @@ export function WarningRow({ tone, code, message, actionLabel, onAction }: Props
       >
         {code}
       </span>
-      <p className="text-text">{message}</p>
+      <p className="ng-selectable text-text">{message}</p>
       {actionLabel && (
         <button
           type="button"

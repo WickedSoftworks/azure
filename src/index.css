@@ -37,6 +37,10 @@
 }
 
 @theme inline {
+  /* tauri.conf.json minWidth. The two-pane composition must hold at every
+     size the window can actually be, not from an arbitrary 1024. */
+  --breakpoint-win: 45rem;
+
   --font-sans: "Iosevka", ui-monospace, monospace;
   --font-mono: "Iosevka", ui-monospace, monospace;
   --font-heading: "Iosevka", ui-monospace, monospace;
@@ -157,6 +161,13 @@
     user-select: none;
   }
 
+  /* The facts are copyable even though the chrome is not. */
+  .ng-selectable,
+  .ng-selectable * {
+    user-select: text;
+    cursor: text;
+  }
+
   /* The surfaces nobody draws still carry the design. */
   ::selection {
     background: var(--ng-signal);
@@ -178,11 +189,11 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: var(--ng-rule);
+    background: var(--ng-rule-bright);
     border: 3px solid var(--ng-void);
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: var(--ng-rule-bright);
+    background: var(--ng-dim);
   }
 
   :focus-visible {
