@@ -99,3 +99,27 @@ channel edits the active preset and persists on a debounce.
 Closing the window still exits Azure, so the watcher only runs while the
 window is open. Tray residency is M7. Making close hide the window instead
 would leave no way to bring it back, which is worse than the honest gap.
+
+## As built
+
+Implemented 2026-09-18. 112 tests pass across the three crates. Where the
+work differs from the design above:
+
+- **The bypass moved into the core.** It was a frontend concern in M1:
+  restore, then re-apply on release. The watcher made that untenable — an
+  activation arriving mid-bypass has to be held — so `set_bypass` is now a
+  command and the engine owns the deferral.
+- **`PresetSet` and `PresetError` are not exported to TypeScript.** One is
+  the on-disk schema and the other is only ever printed; generating
+  bindings nothing imports is how a bindings directory stops meaning
+  anything.
+- **Two diagnostic examples** were added rather than planned:
+  `cargo run -p azure-display --example probe` prints what the machine
+  looks like to the core, and `--example watch` prints every foreground
+  change. The second is how the watcher was verified.
+
+Verified on the machine it was written on: the watcher resolved
+`explorer.exe`, `OpenWith.exe` and `RainbowSix.exe` with full paths; and a
+running Azure with a preset bound to `explorer.exe` switched to it when
+explorer took focus, then persisted the change — the whole chain, from
+Win32 event to disk.

@@ -36,11 +36,15 @@ wired to it: both backends, capability routing at op-group granularity,
 every ramp write verified by readback, and a field that draws what the core
 reports rather than a mock-up of it.
 
-Not built yet: preset persistence (M4), the launcher scanners (M5), the
-focus watcher that switches presets for you (M6), global hotkeys and tray
-residency (M7). Until those land Azure holds one state and applies it to the
-desktop while its window is open — the setup half of the product without the
-invisible half.
+Presets work too: a colour state per game, kept on disk, bound to an
+executable you pick or capture, and applied on their own when that game
+takes the foreground. Nothing is injected to do it — Windows delivers the
+focus event to Azure rather than Azure reaching into the game.
+
+Not built yet: the launcher scanners that would find your games for you
+(M5), and global hotkeys and tray residency (M7). Until those land you add
+games one at a time, and the watcher only runs while Azure's window is
+open.
 
 See `docs/superpowers/specs/` for the design spec and
 `docs/superpowers/plans/` for the milestone plans.

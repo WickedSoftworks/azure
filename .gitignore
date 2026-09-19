@@ -14,6 +14,7 @@ src-tauri/target/
 # Impeccable working files. The design record (DESIGN.md, PRODUCT.md) is
 # committed; review captures and scratch are not.
 .impeccable/review/
+.impeccable/review*.png
 .impeccable/mocks/
 .impeccable/live/
 .impeccable/config.local.json
