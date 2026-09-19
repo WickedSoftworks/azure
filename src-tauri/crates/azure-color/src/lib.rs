@@ -8,3 +8,8 @@
 pub mod channel;
 
 pub use channel::{ChannelId, ChannelRange, ColorState, Unit};
+pub mod matrix;
+pub mod ops;
+
+pub use matrix::Mat5;
+pub use ops::{AffineOp, MixOp, OpGroup, PowerOp};
