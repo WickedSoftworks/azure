@@ -9,11 +9,14 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type {
+  Action,
   ApplyReport,
   ColorState,
   Foreground,
   GammaRangeOutcome,
   LutTarget,
+  Registration,
+  ResidencyView,
   Snapshot,
 } from "./bindings";
 import previewSnapshot from "./preview-snapshot.json";
@@ -133,3 +136,79 @@ export function onActivated(handler: (event: Activated) => void): () => void {
 function previewReport(): ApplyReport {
   return { reports: PREVIEW.channels, stages: [], micros: 0, dirty: false };
 }
+
+// ── residency ───────────────────────────────────────────────────────────
+
+/**
+ * What Windows allowed, what Azure asked for, and where Azure stands on
+ * the machine. One answer rather than four, because the settings screen
+ * draws them together.
+ */
+export function loadResidency(): Promise<ResidencyView> {
+  if (!isTauri()) return Promise.resolve(PREVIEW_RESIDENCY);
+  return invoke<ResidencyView>("get_residency");
+}
+
+/**
+ * Binds one action, or clears it when `chord` is null.
+ *
+ * The chord goes over as the text the capture widget showed. The core
+ * parses it, so an unbindable combination comes back as a refusal with a
+ * reason rather than being stored and quietly never registered.
+ */
+export function setBinding(action: Action, chord: string | null): Promise<Registration[]> {
+  if (!isTauri()) return refuse();
+  return invoke<Registration[]>("set_binding", { action, chord });
+}
+
+export function resetBindings(): Promise<Registration[]> {
+  if (!isTauri()) return refuse();
+  return invoke<Registration[]>("reset_bindings");
+}
+
+export function setAutostart(enabled: boolean): Promise<boolean> {
+  if (!isTauri()) return refuse();
+  return invoke<boolean>("set_autostart", { enabled });
+}
+
+/** Relaunches Azure elevated. This process exits if Windows agrees. */
+export function restartElevated(): Promise<void> {
+  if (!isTauri()) return refuse();
+  return invoke<void>("restart_elevated");
+}
+
+export function hideToTray(): Promise<void> {
+  if (!isTauri()) return Promise.resolve();
+  return invoke<void>("hide_to_tray");
+}
+
+/**
+ * Fires when something outside the window changed the display — a global
+ * hotkey, or the tray menu. Returns its own unsubscribe.
+ */
+export function onSnapshot(handler: (snapshot: Snapshot) => void): () => void {
+  if (!isTauri()) return () => {};
+  const pending = listen<Snapshot>("snapshot", (e) => handler(e.payload));
+  return () => {
+    void pending.then((off) => off());
+  };
+}
+
+/**
+ * What the settings screen draws with no core attached: the defaults, and
+ * nothing registered, because nothing was asked of Windows.
+ */
+const PREVIEW_RESIDENCY: ResidencyView = {
+  bindings: {
+    toggleEnabled: "ALT+SHIFT+V",
+    cycleNext: "ALT+SHIFT+RIGHT",
+    cyclePrev: "ALT+SHIFT+LEFT",
+    restoreDisplay: "CTRL+ALT+SHIFT+R",
+    holdBypass: null,
+  },
+  registrations: [],
+  conflicts: [],
+  autostart: false,
+  elevated: false,
+  notices: [],
+};

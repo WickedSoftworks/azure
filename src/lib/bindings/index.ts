@@ -7,12 +7,15 @@
  * interface has to follow.
  */
 
+export type { Action } from "./Action";
 export type { ActivationMode } from "./ActivationMode";
 export type { ApplyReport } from "./ApplyReport";
+export type { BindingSet } from "./BindingSet";
 export type { ChannelId } from "./ChannelId";
 export type { ChannelRange } from "./ChannelRange";
 export type { ChannelReport } from "./ChannelReport";
 export type { ColorState } from "./ColorState";
+export type { Conflict } from "./Conflict";
 export type { DisplayInfo } from "./DisplayInfo";
 export type { Environment } from "./Environment";
 export type { Fidelity } from "./Fidelity";
@@ -20,7 +23,12 @@ export type { Foreground } from "./Foreground";
 export type { GammaRangeOutcome } from "./GammaRangeOutcome";
 export type { LutTarget } from "./LutTarget";
 export type { MatchKind } from "./MatchKind";
+export type { Outcome } from "./Outcome";
+export type { Phase } from "./Phase";
 export type { Preset } from "./Preset";
+export type { Registration } from "./Registration";
+export type { ResidencyView } from "./ResidencyView";
+export type { Settings } from "./Settings";
 export type { Snapshot } from "./Snapshot";
 export type { Stage } from "./Stage";
 export type { StageLanding } from "./StageLanding";

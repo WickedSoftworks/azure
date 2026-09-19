@@ -4,6 +4,7 @@ import { ChannelRow } from "@/components/ChannelRow";
 import { DisplayRows } from "@/components/DisplayRows";
 import { EventLog, type LogEntry } from "@/components/EventLog";
 import { FooterBar } from "@/components/FooterBar";
+import { HotkeyPanel } from "@/components/HotkeyPanel";
 import { Monument } from "@/components/Monument";
 import { PresetBar } from "@/components/PresetBar";
 import { SignalChain } from "@/components/SignalChain";
@@ -14,27 +15,50 @@ import {
   applyState,
   bindPreset,
   isTauri,
+  loadResidency,
   loadSnapshot,
   onActivated,
+  onSnapshot,
   removePreset,
   renamePreset,
+  resetBindings,
+  restartElevated,
   selectPreset,
+  setAutostart,
+  setBinding,
   setBypass as setBypassIpc,
   setEnabled as setEnabledIpc,
   setLutTarget,
   unlockGammaRange,
 } from "@/lib/ipc";
 import type {
+  Action,
   ApplyReport,
+  BindingSet,
   ChannelId,
   ChannelReport,
   ColorState,
   LutTarget,
   MatchKind,
   Preset,
+  Registration,
+  ResidencyView,
   Snapshot,
   Stage,
 } from "@/lib/model";
+
+/**
+ * What the footer advertises before the bindings have loaded: nothing.
+ * A reminder that appears and then changes is worse than one that
+ * arrives a frame late.
+ */
+const EMPTY_BINDINGS: BindingSet = {
+  toggleEnabled: null,
+  cycleNext: null,
+  cyclePrev: null,
+  restoreDisplay: null,
+  holdBypass: null,
+};
 
 /** How long after the last drag event a change is considered settled. */
 const SETTLE_MS = 350;
@@ -64,6 +88,10 @@ export default function App() {
   const [pulseStage, setPulseStage] = useState<Stage | null>(null);
   const [log, setLog] = useState<LogEntry[]>([]);
   const [gammaNotice, setGammaNotice] = useState<string | null>(null);
+  const [residency, setResidency] = useState<ResidencyView | null>(null);
+  // Set while an elevated window holds the foreground, which is when
+  // Windows UIPI silently refuses to deliver Azure's hotkeys.
+  const [blockedBy, setBlockedBy] = useState<string | null>(null);
 
   const logId = useRef(1);
   const pulseTimer = useRef<number | undefined>(undefined);
@@ -113,6 +141,61 @@ export default function App() {
       }
     });
   }, [absorb, write]);
+
+  useEffect(() => {
+    loadResidency().then((view) => {
+      setResidency(view);
+      for (const notice of view.notices) {
+        write({ kind: "warn", subject: "KEYS", detail: notice });
+      }
+      for (const registration of view.registrations) {
+        if (registration.outcome.kind === "refused") {
+          write({
+            kind: "warn",
+            subject: "KEYS",
+            detail: `${registration.chord} did not register: ${registration.outcome.reason}`,
+          });
+        }
+      }
+    });
+  }, [write]);
+
+  /**
+   * Applies a change to the bindings and keeps what Windows said about
+   * it. The registrations come back from the same call, so a refusal is
+   * visible without a second round trip.
+   */
+  const absorbRegistrations = useCallback(
+    (registrations: Registration[]) => {
+      setResidency((prev: ResidencyView | null) => (prev ? { ...prev, registrations } : prev));
+      void loadResidency().then(setResidency);
+      for (const registration of registrations) {
+        if (registration.outcome.kind === "refused") {
+          write({
+            kind: "warn",
+            subject: "KEYS",
+            detail: `${registration.chord} did not register: ${registration.outcome.reason}`,
+          });
+        }
+      }
+    },
+    [write],
+  );
+
+  const bind = useCallback(
+    (action: Action, chord: string | null) => {
+      setBinding(action, chord)
+        .then(absorbRegistrations)
+        .catch(complain("KEYS"));
+    },
+    [absorbRegistrations, complain],
+  );
+
+  /**
+   * Something outside this window changed the display: a global hotkey,
+   * or the tray menu. The field follows, because the screen already has.
+   */
+  useEffect(() => onSnapshot(absorb), [absorb]);
 
   /**
    * Sends the newest state and drops anything stale behind it.
@@ -295,6 +378,10 @@ export default function App() {
           return;
         }
         absorb(snap);
+        // Windows will not deliver an unelevated process's hotkeys while
+        // an elevated window has focus. The watcher is the only thing
+        // that can tell, so it is what says so.
+        setBlockedBy(foreground.elevated ? foreground.exe : null);
         const preset = snap.presets.find((p) => p.id === snap.activeId);
         write({
           kind: "activate",
@@ -395,6 +482,18 @@ export default function App() {
         />
       )}
 
+      {blockedBy && residency && !residency.elevated && (
+        <WarningRow
+          tone="warn"
+          code="HOTKEYS BLOCKED"
+          message={`${blockedBy} is running as administrator, and Windows will not deliver Azure's hotkeys while it has focus. Preset switching still works.`}
+          actionLabel="RESTART AS ADMINISTRATOR"
+          onAction={() => {
+            restartElevated().catch(complain("KEYS"));
+          }}
+        />
+      )}
+
       {gamma?.fidelity === "clamped" && (
         <WarningRow
           tone="warn"
@@ -449,6 +548,36 @@ export default function App() {
             lutTarget={lutTargetKey}
             onTarget={retarget}
           />
+
+          {residency && (
+            <HotkeyPanel
+              bindings={residency.bindings}
+              registrations={residency.registrations}
+              conflicts={residency.conflicts}
+              autostart={residency.autostart}
+              live={LIVE}
+              onBind={bind}
+              onReset={() => {
+                resetBindings().then(absorbRegistrations).catch(complain("KEYS"));
+              }}
+              onAutostart={(next) => {
+                setAutostart(next)
+                  .then((now) => {
+                    setResidency((prev: ResidencyView | null) =>
+                      prev ? { ...prev, autostart: now } : prev,
+                    );
+                    write({
+                      kind: now ? "apply" : "restore",
+                      subject: "START",
+                      detail: now
+                        ? "Azure will start hidden with Windows"
+                        : "Azure will no longer start with Windows",
+                    });
+                  })
+                  .catch(complain("START"));
+              }}
+            />
+          )}
 
           <EventLog entries={log} />
 
@@ -514,7 +643,10 @@ export default function App() {
         }
       />
 
-      <FooterBar bypassed={bypassed} />
+      <FooterBar
+        bypassed={bypassed}
+        bindings={residency?.bindings ?? EMPTY_BINDINGS}
+      />
     </div>
   );
 }

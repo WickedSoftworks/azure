@@ -4,4 +4,13 @@
  * What was in front: its full path when the process would give one up,
  * and always its executable name.
  */
-export type Foreground = { path: string | null, exe: string, };
+export type Foreground = { path: string | null, exe: string, 
+/**
+ * The process refused even a limited-information handle, which in
+ * practice means it is elevated.
+ *
+ * Two consequences, both worth reporting rather than inferring at the
+ * far end: the preset can only match by executable name, and Windows
+ * UIPI will not deliver Azure's hotkeys while this window has focus.
+ */
+elevated: boolean, };

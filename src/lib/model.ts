@@ -11,8 +11,10 @@
 import type { ChannelRange, Fidelity, Stage } from "./bindings";
 
 export type {
+  Action,
   ActivationMode,
   ApplyReport,
+  BindingSet,
   ChannelId,
   ChannelRange,
   ChannelReport,
@@ -25,6 +27,8 @@ export type {
   LutTarget,
   MatchKind,
   Preset,
+  Registration,
+  ResidencyView,
   Snapshot,
   Stage,
   StageLanding,
