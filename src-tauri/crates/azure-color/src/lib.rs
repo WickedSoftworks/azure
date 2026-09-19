@@ -16,3 +16,6 @@ pub use ops::{AffineOp, MixOp, OpGroup, PowerOp};
 pub mod ramp;
 
 pub use ramp::Ramp;
+pub mod route;
+
+pub use route::{plan, route, ApplyPlan, ChannelReport, Environment, Fidelity, Stage};
