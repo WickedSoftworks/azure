@@ -135,11 +135,11 @@ pub fn plan(state: &ColorState, env: &Environment) -> ApplyPlan {
     let mut matrix = Mat5::IDENTITY;
     let mut wrote_matrix = false;
     if routing.mix == Some(Stage::Matrix) && !mix.is_identity() {
-        matrix = matrix.mul(Mat5::from_mix(&mix));
+        matrix = matrix.then(Mat5::from_mix(&mix));
         wrote_matrix = true;
     }
     if routing.affine == Some(Stage::Matrix) && !affine.is_identity() {
-        matrix = matrix.mul(Mat5::affine(&affine));
+        matrix = matrix.then(Mat5::affine(&affine));
         wrote_matrix = true;
     }
 

@@ -20,14 +20,11 @@ impl std::fmt::Debug for Ramp {
 
 impl Ramp {
     pub fn identity() -> Ramp {
-        let mut out = [[0u16; 256]; 3];
-        for i in 0..256 {
-            let v = (i as u32 * 65535 / 255) as u16;
-            out[0][i] = v;
-            out[1][i] = v;
-            out[2][i] = v;
+        let mut plane = [0u16; 256];
+        for (i, entry) in plane.iter_mut().enumerate() {
+            *entry = (i as u32 * 65535 / 255) as u16;
         }
-        Ramp(out)
+        Ramp([plane; 3])
     }
 
     /// Evaluates the affine group then the power group, in that order,
@@ -37,8 +34,8 @@ impl Ramp {
     pub fn build(affine: &AffineOp, power: &PowerOp) -> Ramp {
         let exponent = 1.0 / power.gamma.max(1e-3);
         let mut out = [[0u16; 256]; 3];
-        for c in 0..3 {
-            for i in 0..256 {
+        for (c, plane) in out.iter_mut().enumerate() {
+            for (i, entry) in plane.iter_mut().enumerate() {
                 let x = i as f32 / 255.0;
                 let x = x * affine.brightness;
                 let x = (x - 0.5) * affine.contrast + 0.5;
@@ -46,7 +43,7 @@ impl Ramp {
                 // Clamp before the power: a negative base with a fractional
                 // exponent is NaN, and NaN on a display is a black screen.
                 let x = x.clamp(0.0, 1.0).powf(exponent);
-                out[c][i] = (x.clamp(0.0, 1.0) * 65535.0).round() as u16;
+                *entry = (x.clamp(0.0, 1.0) * 65535.0).round() as u16;
             }
         }
         Ramp(out)
@@ -60,29 +57,29 @@ impl Ramp {
     /// landed: `SetDeviceGammaRamp` reports success while silently applying
     /// something else, so the only honest check is reading it back.
     pub fn max_deviation(&self, other: &Ramp) -> u16 {
-        let mut worst = 0u16;
-        for c in 0..3 {
-            for i in 0..256 {
-                worst = worst.max(self.0[c][i].abs_diff(other.0[c][i]));
-            }
-        }
-        worst
+        self.0
+            .iter()
+            .zip(other.0.iter())
+            .flat_map(|(a, b)| a.iter().zip(b.iter()))
+            .map(|(a, b)| a.abs_diff(*b))
+            .max()
+            .unwrap_or(0)
     }
 
     /// The inverse of `as_gdi`, for turning a readback back into a ramp
     /// that `max_deviation` can measure.
     pub fn from_gdi(flat: &[u16; 768]) -> Ramp {
         let mut out = [[0u16; 256]; 3];
-        for c in 0..3 {
-            out[c].copy_from_slice(&flat[c * 256..c * 256 + 256]);
+        for (c, plane) in out.iter_mut().enumerate() {
+            plane.copy_from_slice(&flat[c * 256..c * 256 + 256]);
         }
         Ramp(out)
     }
 
     pub fn as_gdi(&self) -> [u16; 768] {
         let mut flat = [0u16; 768];
-        for c in 0..3 {
-            flat[c * 256..c * 256 + 256].copy_from_slice(&self.0[c]);
+        for (c, plane) in self.0.iter().enumerate() {
+            flat[c * 256..c * 256 + 256].copy_from_slice(plane);
         }
         flat
     }

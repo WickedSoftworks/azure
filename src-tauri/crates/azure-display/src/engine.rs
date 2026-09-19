@@ -247,11 +247,13 @@ mod tests {
 
     #[test]
     fn targeting_one_display_does_not_touch_the_others() {
-        let mut ramp = MockRamp::default();
-        ramp.displays = vec![
-            DisplayInfo { key: "A".into(), name: "A".into(), primary: true, hdr: false },
-            DisplayInfo { key: "B".into(), name: "B".into(), primary: false, hdr: false },
-        ];
+        let ramp = MockRamp {
+            displays: vec![
+                DisplayInfo { key: "A".into(), name: "A".into(), primary: true, hdr: false },
+                DisplayInfo { key: "B".into(), name: "B".into(), primary: false, hdr: false },
+            ],
+            ..Default::default()
+        };
         let mut c = Core::new(Box::new(MockMatrix::default()), Box::new(ramp));
         let mut s = ColorState::neutral();
         s.set(ChannelId::Gamma, 112);

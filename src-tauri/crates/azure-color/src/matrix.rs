@@ -20,9 +20,10 @@ impl Mat5 {
         [0.0, 0.0, 0.0, 0.0, 1.0],
     ]);
 
-    /// `self` first, then `rhs`. Row-vector convention, so this is the plain
-    /// product self*rhs and the reading order matches the device order.
-    pub fn mul(self, rhs: Mat5) -> Mat5 {
+    /// Apply `self`, then `rhs`. Row-vector convention, so this is the
+    /// plain product self*rhs and the reading order is the device order.
+    #[allow(clippy::needless_range_loop)] // a matrix product reads better with indices
+    pub fn then(self, rhs: Mat5) -> Mat5 {
         let mut out = [[0.0f32; 5]; 5];
         for i in 0..5 {
             for j in 0..5 {
@@ -56,8 +57,8 @@ impl Mat5 {
 
     pub fn as_flat(&self) -> [f32; 25] {
         let mut out = [0.0f32; 25];
-        for i in 0..5 {
-            out[i * 5..i * 5 + 5].copy_from_slice(&self.0[i]);
+        for (i, row) in self.0.iter().enumerate() {
+            out[i * 5..i * 5 + 5].copy_from_slice(row);
         }
         out
     }
@@ -114,16 +115,16 @@ impl Mat5 {
     /// `Ramp::build` evaluates the same three steps in the same order.
     pub fn affine(op: &AffineOp) -> Mat5 {
         let mut m = Mat5::IDENTITY;
-        for c in 0..3 {
-            m.0[c][c] = op.gains[c] * op.contrast * op.brightness;
-            m.0[4][c] = op.gains[c] * 0.5 * (1.0 - op.contrast);
+        for (c, gain) in op.gains.iter().enumerate() {
+            m.0[c][c] = gain * op.contrast * op.brightness;
+            m.0[4][c] = gain * 0.5 * (1.0 - op.contrast);
         }
         m
     }
 
     /// The whole mix group: saturation (carrying vibrance) then hue.
     pub fn from_mix(op: &MixOp) -> Mat5 {
-        Mat5::saturation(op.saturation).mul(Mat5::hue(op.hue_degrees))
+        Mat5::saturation(op.saturation).then(Mat5::hue(op.hue_degrees))
     }
 }
 
@@ -185,7 +186,7 @@ mod tests {
     fn composition_applies_left_operand_first() {
         // Desaturate, then halve. Order matters: the reverse is a different
         // picture, and the device order is not ours to choose.
-        let desat_then_dim = Mat5::saturation(0.0).mul(Mat5::affine(&AffineOp {
+        let desat_then_dim = Mat5::saturation(0.0).then(Mat5::affine(&AffineOp {
             brightness: 0.5,
             contrast: 1.0,
             gains: [1.0, 1.0, 1.0],
