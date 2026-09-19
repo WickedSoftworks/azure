@@ -8,8 +8,6 @@
 
 use std::collections::HashMap;
 
-use serde::{Deserialize, Serialize};
-use ts_rs::TS;
 use windows::core::{w, PCWSTR};
 use windows::Win32::Devices::Display::{
     DisplayConfigGetDeviceInfo, GetDisplayConfigBufferSizes, QueryDisplayConfig,
@@ -24,7 +22,7 @@ use windows::Win32::System::Registry::{
     RegSetKeyValueW, HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, REG_DWORD,
 };
 
-use crate::backend::DisplayInfo;
+use crate::backend::{DisplayInfo, GammaRangeOutcome};
 
 /// `DISPLAY_DEVICE_ATTACHED_TO_DESKTOP`. A display that is not attached has
 /// no scanout LUT to write.
@@ -226,18 +224,6 @@ pub fn gamma_range_unlocked() -> bool {
 }
 
 const ICM_KEY: PCWSTR = w!("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ICM");
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
-#[serde(rename_all = "camelCase", tag = "kind")]
-#[ts(export)]
-pub enum GammaRangeOutcome {
-    /// Written. Windows reads this at sign-in, so it is not live yet.
-    Unlocked { requires_sign_out: bool },
-    /// HKLM is not writable without elevation, and Azure does not elevate
-    /// itself behind the user's back.
-    NeedsElevation,
-    Failed { reason: String },
-}
 
 /// Writes `GdiIcmGammaRange`. Only ever called because the user pressed the
 /// button that says so.

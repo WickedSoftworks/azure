@@ -9,6 +9,8 @@
 use azure_color::Environment;
 
 use crate::backend::{DisplayInfo, Unavailable};
+#[cfg(not(windows))]
+use crate::backend::GammaRangeOutcome;
 use crate::engine::Core;
 
 /// Builds the core this machine can support. The second return is the list
@@ -86,6 +88,16 @@ pub fn color_filters_active() -> bool {
 #[cfg(not(windows))]
 pub fn gamma_range_unlocked() -> bool {
     false
+}
+
+#[cfg(windows)]
+pub use crate::win::unlock_gamma_range;
+
+#[cfg(not(windows))]
+pub fn unlock_gamma_range() -> GammaRangeOutcome {
+    GammaRangeOutcome::Failed {
+        reason: "the gamma range is a Windows registry setting".to_string(),
+    }
 }
 
 #[cfg(test)]

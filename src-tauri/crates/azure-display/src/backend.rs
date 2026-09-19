@@ -54,6 +54,19 @@ pub trait RampBackend: Send {
     fn clear(&mut self) -> Result<(), BackendError>;
 }
 
+/// What came of asking Windows to lift the GDI gamma clamp.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", rename_all_fields = "camelCase", tag = "kind")]
+#[ts(export)]
+pub enum GammaRangeOutcome {
+    /// Written. Windows reads this at sign-in, so it is not live yet.
+    Unlocked { requires_sign_out: bool },
+    /// HKLM is not writable without elevation, and Azure does not elevate
+    /// itself behind the user's back.
+    NeedsElevation,
+    Failed { reason: String },
+}
+
 /// Quantisation noise between a written and a read-back ramp is a few
 /// counts; anything past this is the driver applying something else.
 pub const CLAMP_TOLERANCE: u16 = 512;

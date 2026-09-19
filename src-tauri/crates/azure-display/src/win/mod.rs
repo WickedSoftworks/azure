@@ -6,7 +6,7 @@ mod magnifier;
 
 pub use displays::{
     color_filters_active, enumerate_adapters, enumerate_displays, gamma_range_unlocked,
-    unlock_gamma_range, GammaRangeOutcome,
+    unlock_gamma_range,
 };
 pub use lut::GdiRamp;
 pub use magnifier::MagnifierMatrix;

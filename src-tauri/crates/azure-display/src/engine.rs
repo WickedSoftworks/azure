@@ -140,8 +140,13 @@ impl Core {
         }
     }
 
-    /// Puts the display back. Runs on exit, on panic, and on the next launch
-    /// after an unclean shutdown.
+    /// Puts the display back. Runs when Azure is switched off, when the
+    /// engine shuts down, and — through the backends' `Drop` — when the
+    /// worker thread unwinds.
+    ///
+    /// Recovery after a hard kill, where no Rust code runs at all, needs a
+    /// dirty flag on disk and lands with preset persistence in M4. Until
+    /// then a killed Azure leaves its last ramp on the display.
     pub fn restore(&mut self) -> Result<(), BackendError> {
         let a = self.matrix.clear();
         let b = self.ramp.clear();

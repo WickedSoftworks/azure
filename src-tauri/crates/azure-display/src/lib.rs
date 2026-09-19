@@ -9,10 +9,12 @@ pub mod win;
 pub mod engine;
 pub mod mock;
 pub mod probe;
+pub mod thread;
 
 pub use backend::{
-    BackendError, DisplayInfo, LutTarget, MatrixBackend, RampBackend, RampLanding, Unavailable,
+    BackendError, DisplayInfo, LutTarget, MatrixBackend, RampBackend, GammaRangeOutcome, RampLanding, Unavailable,
     CLAMP_TOLERANCE,
 };
 pub use engine::{ApplyReport, Core, StageLanding};
-pub use probe::{environment, real_core};
+pub use probe::{environment, real_core, unlock_gamma_range};
+pub use thread::{EngineDown, EngineHandle, Snapshot};
