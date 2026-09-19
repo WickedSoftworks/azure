@@ -219,6 +219,7 @@ version = "0.1.0"
 dependencies = [
  "azure-color",
  "azure-display",
+ "azure-scan",
  "azure-settings",
  "serde",
  "serde_json",
@@ -259,6 +260,16 @@ dependencies = [
  "serde",
  "serde_json",
  "ts-rs",
+]
+
+[[package]]
+name = "azure-scan"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "ts-rs",
+ "windows 0.62.2",
 ]
 
 [[package]]
