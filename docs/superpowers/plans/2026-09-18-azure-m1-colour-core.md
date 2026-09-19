@@ -75,7 +75,7 @@ src/lib/model.ts                        UI-only helpers; types re-exported from 
 - Produces: `ChannelId` (8 unit variants, `ChannelId::ALL`, `.key()`, `.name()`, `.range()`), `Unit::{Percent,Degrees,Factor}`, `ChannelRange{min,max,neutral,step,unit}`, `ColorState` (struct of 8 `i32` fields), `ColorState::neutral()`, `.get(ChannelId)`, `.set(ChannelId, i32)` (clamping), `.is_neutral(ChannelId)`, `.touched()`.
 - The eight ranges must match `src/lib/model.ts` exactly: vibrance 0..200 n100, saturation 0..200 n100, hue -180..180 n0, brightness -50..50 n0, contrast 30..200 n100, gamma 40..280 n100, temperature -100..100 n0, tint -100..100 n0.
 
-- [ ] **Step 1: Make src-tauri a workspace root**
+- [x] **Step 1: Make src-tauri a workspace root**
 
 Add to the top of `src-tauri/Cargo.toml`, above `[package]`:
 
@@ -84,7 +84,7 @@ Add to the top of `src-tauri/Cargo.toml`, above `[package]`:
 members = ["crates/*"]
 ```
 
-- [ ] **Step 2: Create the pure crate manifest**
+- [x] **Step 2: Create the pure crate manifest**
 
 `src-tauri/crates/azure-color/Cargo.toml`:
 
@@ -100,7 +100,7 @@ serde = { version = "1", features = ["derive"] }
 ts-rs = "12"
 ```
 
-- [ ] **Step 3: Write the failing test**
+- [x] **Step 3: Write the failing test**
 
 `src-tauri/crates/azure-color/src/channel.rs`:
 
@@ -148,12 +148,12 @@ mod tests {
 }
 ```
 
-- [ ] **Step 4: Run it and watch it fail**
+- [x] **Step 4: Run it and watch it fail**
 
 Run: `cargo test -p azure-color`
 Expected: FAIL — `cannot find type ColorState in this scope`.
 
-- [ ] **Step 5: Implement the channel model**
+- [x] **Step 5: Implement the channel model**
 
 `src-tauri/crates/azure-color/src/channel.rs`, above the test module:
 
@@ -315,12 +315,12 @@ pub mod channel;
 pub use channel::{ChannelId, ChannelRange, ColorState, Unit};
 ```
 
-- [ ] **Step 6: Run the tests**
+- [x] **Step 6: Run the tests**
 
 Run: `cargo test -p azure-color`
 Expected: PASS, 4 tests.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src-tauri/Cargo.toml src-tauri/Cargo.lock src-tauri/crates/azure-color
@@ -341,7 +341,7 @@ git commit -m "Add the pure colour crate and the eight-channel model"
 - Consumes: `ChannelId`, `ColorState` from Task 1.
 - Produces: `OpGroup::{Mix,Affine,Power}`, `ChannelId::group()`, `MixOp{saturation,hue_degrees}`, `AffineOp{brightness,contrast,gains:[f32;3]}`, `PowerOp{gamma}`, each with `from_state(&ColorState)` and `is_identity()`; `Mat5([[f32;5];5])` with `IDENTITY`, `mul`, `apply([f32;3])`, `saturation(f32)`, `hue(f32)`, `affine(&AffineOp)`, `from_mix(&MixOp)`, `is_identity()`, `as_flat() -> [f32;25]`.
 
-- [ ] **Step 1: Write the op-group decomposition**
+- [x] **Step 1: Write the op-group decomposition**
 
 `src-tauri/crates/azure-color/src/ops.rs`:
 
@@ -449,7 +449,7 @@ impl PowerOp {
 }
 ```
 
-- [ ] **Step 2: Write the failing matrix tests**
+- [x] **Step 2: Write the failing matrix tests**
 
 `src-tauri/crates/azure-color/src/matrix.rs`:
 
@@ -538,12 +538,12 @@ mod tests {
 }
 ```
 
-- [ ] **Step 3: Run them and watch them fail**
+- [x] **Step 3: Run them and watch them fail**
 
 Run: `cargo test -p azure-color --lib matrix`
 Expected: FAIL — `cannot find type Mat5 in this scope`.
 
-- [ ] **Step 4: Implement the matrix**
+- [x] **Step 4: Implement the matrix**
 
 `src-tauri/crates/azure-color/src/matrix.rs`, above the tests:
 
@@ -676,12 +676,12 @@ pub use matrix::Mat5;
 pub use ops::{AffineOp, MixOp, OpGroup, PowerOp};
 ```
 
-- [ ] **Step 5: Run the tests**
+- [x] **Step 5: Run the tests**
 
 Run: `cargo test -p azure-color`
 Expected: PASS, 14 tests.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src-tauri/crates/azure-color
@@ -702,7 +702,7 @@ git commit -m "Add the colour matrix and op-group decomposition"
 - Produces: `Ramp(pub [[u16; 256]; 3])` with `identity()`, `build(&AffineOp, &PowerOp)`, `is_identity()`, `max_deviation(&Ramp) -> u16`, `as_gdi() -> [u16; 768]`.
 - `max_deviation` is what Task 5 uses to decide whether a write actually landed.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `src-tauri/crates/azure-color/src/ramp.rs`:
 
@@ -814,12 +814,12 @@ mod tests {
 }
 ```
 
-- [ ] **Step 2: Run them and watch them fail**
+- [x] **Step 2: Run them and watch them fail**
 
 Run: `cargo test -p azure-color --lib ramp`
 Expected: FAIL — `cannot find type Ramp in this scope`.
 
-- [ ] **Step 3: Implement the ramp**
+- [x] **Step 3: Implement the ramp**
 
 `src-tauri/crates/azure-color/src/ramp.rs`, above the tests:
 
@@ -910,12 +910,12 @@ pub mod ramp;
 pub use ramp::Ramp;
 ```
 
-- [ ] **Step 4: Run the tests**
+- [x] **Step 4: Run the tests**
 
 Run: `cargo test -p azure-color`
 Expected: PASS, 24 tests.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src-tauri/crates/azure-color
@@ -936,7 +936,7 @@ git commit -m "Add the scanout ramp and its readback deviation measure"
 - Produces: `Environment{matrix_available, lut_available, exclusive_fullscreen, hdr_active, gamma_range_unlocked, color_filters_active}` (+ `Environment::ideal()`), `Stage::{Matrix,Lut}`, `Fidelity::{Exact,Approximate,Clamped,Inert,Unrealised}`, `Routing{mix, affine, power}` each `Option<Stage>`, `route(&Environment) -> Routing`, `ChannelReport{id, key, name, range, stage, fidelity, reachable, note}`, `ApplyPlan{matrix: Option<Mat5>, ramp: Option<Ramp>, reports: Vec<ChannelReport>}`, `plan(&ColorState, &Environment) -> ApplyPlan`.
 - `GAMMA_LOCKED_REACHABLE: [i32; 2] = [70, 140]`.
 
-- [ ] **Step 1: Write the failing routing tests**
+- [x] **Step 1: Write the failing routing tests**
 
 `src-tauri/crates/azure-color/src/route.rs`:
 
@@ -1099,12 +1099,12 @@ mod tests {
 }
 ```
 
-- [ ] **Step 2: Run them and watch them fail**
+- [x] **Step 2: Run them and watch them fail**
 
 Run: `cargo test -p azure-color --lib route`
 Expected: FAIL — `cannot find function route in this scope`.
 
-- [ ] **Step 3: Implement routing**
+- [x] **Step 3: Implement routing**
 
 `src-tauri/crates/azure-color/src/route.rs`, above the tests:
 
@@ -1326,12 +1326,12 @@ pub mod route;
 pub use route::{plan, route, ApplyPlan, ChannelReport, Environment, Fidelity, Stage};
 ```
 
-- [ ] **Step 4: Run the tests**
+- [x] **Step 4: Run the tests**
 
 Run: `cargo test -p azure-color`
 Expected: PASS, 38 tests.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src-tauri/crates/azure-color
@@ -1365,7 +1365,7 @@ git commit -m "Route op-groups by capability and report per-channel fidelity"
   - `CLAMP_TOLERANCE: u16 = 512`
 - `RampBackend::apply` is responsible for readback verification; `deviation` is `written.max_deviation(&read_back)`.
 
-- [ ] **Step 1: Create the crate**
+- [x] **Step 1: Create the crate**
 
 `src-tauri/crates/azure-display/Cargo.toml`:
 
@@ -1393,7 +1393,7 @@ windows = { version = "0.62", features = [
 ] }
 ```
 
-- [ ] **Step 2: Write the failing engine tests**
+- [x] **Step 2: Write the failing engine tests**
 
 `src-tauri/crates/azure-display/src/engine.rs`:
 
@@ -1492,12 +1492,12 @@ mod tests {
 }
 ```
 
-- [ ] **Step 3: Run them and watch them fail**
+- [x] **Step 3: Run them and watch them fail**
 
 Run: `cargo test -p azure-display`
 Expected: FAIL — `cannot find type Core in this scope`.
 
-- [ ] **Step 4: Implement the backend traits**
+- [x] **Step 4: Implement the backend traits**
 
 `src-tauri/crates/azure-display/src/backend.rs`:
 
@@ -1563,7 +1563,7 @@ pub trait RampBackend: Send {
 pub const CLAMP_TOLERANCE: u16 = 512;
 ```
 
-- [ ] **Step 5: Implement the mock backends**
+- [x] **Step 5: Implement the mock backends**
 
 `src-tauri/crates/azure-display/src/mock.rs`:
 
@@ -1666,7 +1666,7 @@ impl RampBackend for MockRamp {
 }
 ```
 
-- [ ] **Step 6: Implement the apply path**
+- [x] **Step 6: Implement the apply path**
 
 `src-tauri/crates/azure-display/src/engine.rs`, above the tests:
 
@@ -1847,12 +1847,12 @@ pub use backend::{
 pub use engine::{ApplyReport, Core, StageLanding};
 ```
 
-- [ ] **Step 7: Run the tests**
+- [x] **Step 7: Run the tests**
 
 Run: `cargo test -p azure-display`
 Expected: PASS, 7 tests.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add src-tauri/crates/azure-display src-tauri/Cargo.lock
@@ -1877,7 +1877,7 @@ git commit -m "Add backend traits, mock backends and the verified apply path"
 
 **No unit test asserts a visible change** — that needs a camera. The tests here assert construction and teardown; the maths is already covered.
 
-- [ ] **Step 1: Write the smoke test**
+- [x] **Step 1: Write the smoke test**
 
 `src-tauri/crates/azure-display/src/win/mod.rs`:
 
@@ -1913,12 +1913,12 @@ mod tests {
 }
 ```
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 Run: `cargo test -p azure-display --lib win`
 Expected: FAIL — `cannot find function enumerate_displays in this scope`.
 
-- [ ] **Step 3: Implement display enumeration and the registry probes**
+- [x] **Step 3: Implement display enumeration and the registry probes**
 
 `src-tauri/crates/azure-display/src/win/displays.rs`. Read-only; this module writes nothing except `unlock_gamma_range`.
 
@@ -1959,7 +1959,7 @@ pub enum GammaRangeOutcome {
 }
 ```
 
-- [ ] **Step 4: Implement the magnifier backend**
+- [x] **Step 4: Implement the magnifier backend**
 
 `src-tauri/crates/azure-display/src/win/magnifier.rs`:
 
@@ -1969,7 +1969,7 @@ pub enum GammaRangeOutcome {
 - Both `apply` and `clear` refuse when `color_filters_active()`, returning `BackendError::Unavailable("Windows Colour Filters owns the fullscreen colour effect")`.
 - Comment: a documented user-mode API that asks the compositor to post-process its own output. Reads nothing, touches no other process, installs nothing.
 
-- [ ] **Step 5: Implement the GDI ramp backend**
+- [x] **Step 5: Implement the GDI ramp backend**
 
 `src-tauri/crates/azure-display/src/win/lut.rs`:
 
@@ -1978,7 +1978,7 @@ pub enum GammaRangeOutcome {
 - `clear` writes `Ramp::identity()` to every display.
 - Comment: the same documented call every vendor control panel and calibration tool makes.
 
-- [ ] **Step 6: Implement the probe**
+- [x] **Step 6: Implement the probe**
 
 `src-tauri/crates/azure-display/src/probe.rs`:
 
@@ -1996,12 +1996,12 @@ pub fn environment(
 
 `environment` fills `hdr_active` from `displays.iter().any(|d| d.hdr)`, `color_filters_active` and `gamma_range_unlocked` from the registry reads, and leaves `exclusive_fullscreen` false — the foreground watcher that sets it is M6, and reporting a guess would be a lie. That sentence goes in the code as a comment.
 
-- [ ] **Step 7: Run the tests**
+- [x] **Step 7: Run the tests**
 
 Run: `cargo test -p azure-display`
 Expected: PASS. The ramp round-trip either runs or prints its skip line.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add src-tauri/crates/azure-display src-tauri/Cargo.lock
@@ -2021,7 +2021,7 @@ git commit -m "Add the DWM matrix and scanout LUT backends"
 - Produces: `EngineHandle` (`Clone + Send + Sync`) with `spawn()`, `spawn_mock()`, `apply(ColorState, LutTarget) -> Result<ApplyReport, EngineDown>`, `set_enabled(bool) -> Result<ApplyReport, EngineDown>`, `snapshot() -> Result<Snapshot, EngineDown>`, `restore() -> Result<(), EngineDown>`, `shutdown() -> Result<(), EngineDown>`; `Snapshot { channels: Vec<ChannelReport>, displays: Vec<DisplayInfo>, environment: Environment, enabled: bool, state: ColorState, target: LutTarget, notices: Vec<String> }`.
 - All display state — the Magnification session, every `HDC` — lives on the worker thread and nowhere else.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```rust
 #[cfg(test)]
@@ -2076,21 +2076,21 @@ mod tests {
 }
 ```
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 Run: `cargo test -p azure-display --lib thread`
 Expected: FAIL — `cannot find type EngineHandle in this scope`.
 
-- [ ] **Step 3: Implement the thread**
+- [x] **Step 3: Implement the thread**
 
 A `std::sync::mpsc` channel of `Msg` variants, each carrying a reply `Sender`. The worker owns `Core`, the current `ColorState`, `enabled`, and the `LutTarget`. `set_enabled(false)` calls `Core::restore` without clearing the stored state; `set_enabled(true)` re-applies it. On `Msg::Shutdown`, and on loop exit for any reason, the worker calls `Core::restore` before dropping its backends.
 
-- [ ] **Step 4: Run the tests**
+- [x] **Step 4: Run the tests**
 
 Run: `cargo test -p azure-display`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src-tauri/crates/azure-display
@@ -2113,11 +2113,11 @@ Generated bindings **are committed**, so the frontend builds without a Rust tool
 - Commands: `get_snapshot() -> Snapshot`, `apply_state(state: ColorState, target: LutTarget) -> ApplyReport`, `set_enabled(enabled: bool) -> ApplyReport`, `set_lut_target(target: LutTarget) -> ApplyReport`, `restore_display() -> ()`, `unlock_gamma_range() -> GammaRangeOutcome`.
 - Tauri converts snake_case parameters to camelCase on the JS side; the TS wrappers in Task 9 pass `{ state, target }` and `{ enabled }`.
 
-- [ ] **Step 1: Delete the scaffold command**
+- [x] **Step 1: Delete the scaffold command**
 
 Remove `greet` from `src-tauri/src/lib.rs`. Nothing calls it, and "Hello, you've been greeted from Rust!" inside a product that promises never to lie about what landed is exactly the kind of thing that stays for two years.
 
-- [ ] **Step 2: Wire the engine into Tauri state**
+- [x] **Step 2: Wire the engine into Tauri state**
 
 ```rust
 pub fn run() {
@@ -2146,17 +2146,17 @@ pub fn run() {
 }
 ```
 
-- [ ] **Step 3: Write the commands**
+- [x] **Step 3: Write the commands**
 
 Each command is three lines: take `State<EngineHandle>`, call the handle, map the channel error to a `String`. No logic — the logic is tested in the crates below it.
 
-- [ ] **Step 4: Generate the bindings**
+- [x] **Step 4: Generate the bindings**
 
 Run: `cargo test -p azure-color -p azure-display`
 Expected: `src/lib/bindings/*.ts` written by ts-rs.
 Then write `src/lib/bindings/index.ts` re-exporting every generated type, and verify with `bun run build`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src-tauri src/lib/bindings
@@ -2178,32 +2178,32 @@ git commit -m "Expose the colour core over typed Tauri commands"
 - Consumes: the generated types and the six commands.
 - Produces: `isTauri()`, `loadSnapshot()`, `applyState(state, target)`, `setEnabled(enabled)`, `setLutTarget(target)`, `unlockGammaRange()`.
 
-- [ ] **Step 1: Write the IPC layer with an honest browser fallback**
+- [x] **Step 1: Write the IPC layer with an honest browser fallback**
 
 `bun run dev` in a browser has no Rust core. Rather than fake one, `isTauri()` is false there and the field renders with every channel `Unrealised` and the note "no colour core in a browser session; run `bun tauri dev`". The surface must never draw a capability it does not have, and that includes during development.
 
-- [ ] **Step 2: Replace the module-level channel table**
+- [x] **Step 2: Replace the module-level channel table**
 
 `CHANNELS` and `channelsFor()` in `src/lib/model.ts` are the invented half. Delete both. `App` holds `channels: ChannelReport[]` from the snapshot and passes them down. `formatValue`, `FIDELITY_LABEL` and `isInert` stay — they are presentation, not capability. Adjust each component's import to the generated types; change the imports, not the markup.
 
-- [ ] **Step 3: Replace the log with real events**
+- [x] **Step 3: Replace the log with real events**
 
 Every `applyState` returns an `ApplyReport`. The log entry is built from it — `micros` for `TOOK`, the changed channel keys for `SUBJECT`, `stages[].backend` plus the channel's fidelity for `DETAIL`, `kind: "warn"` when any report came back `Clamped`, `Inert` or `Unrealised`. Delete the `Math.random()` latency.
 
-- [ ] **Step 4: Make the gamma warning row tell the truth**
+- [x] **Step 4: Make the gamma warning row tell the truth**
 
 `UNLOCK FULL RANGE` calls `unlockGammaRange()`. On `NeedsElevation` the row reads "Unlocking the gamma range writes an HKLM registry value and needs an elevated Azure. Restart as administrator to change it." On `Unlocked { requiresSignOut: true }` it reads "Written. Windows reads this at sign-in, so the full range is available after you sign out and back in." Neither pretends the slider changed.
 
-- [ ] **Step 5: Verify against the real app**
+- [x] **Step 5: Verify against the real app**
 
 Run: `bun tauri dev`
 Check, on the real desktop: moving `SAT` changes the screen; moving `GAM` changes the screen; `TOOK` shows a measured microsecond figure; closing the app restores the display; the event log names the backend that carried each change.
 
-- [ ] **Step 6: Update the README status line**
+- [x] **Step 6: Update the README status line**
 
 Replace "the Rust colour core is in progress" with what is true after this task.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src src-tauri README.md
@@ -2219,3 +2219,48 @@ git commit -m "Draw what the core reports instead of synthetic data"
 **Out of scope, by design.** UIPI and elevated-window hotkeys, the `exclusive_fullscreen` probe, launcher scanning, preset persistence. `Environment.exclusive_fullscreen` exists and routes correctly but is only ever set by M6; Task 6 Step 6 says so in a comment rather than guessing.
 
 **Known risk, resolved before writing this plan.** `tauri-specta` v2 does not exist on crates.io — only the Tauri-v1-era 1.0.2 — so the promise in `src/lib/model.ts` that bindings will be "generated by tauri-specta" cannot be kept. This plan uses `ts-rs` 12 instead, which generates types but not command wrappers; Task 9 hand-writes six thin wrappers. The stale comment dies in Task 9 Step 2.
+
+---
+
+## What actually happened
+
+Executed 2026-09-18 on branch `m1-colour-core`. All nine tasks landed; 74
+tests pass (`cargo test --workspace`), `bun run build` is clean, and
+`bun tauri dev` runs. Where the work diverged from the plan:
+
+- **`Ramp::from_gdi`** was added to Task 3. The plan gave the LUT backend
+  `as_gdi` for writing but nothing to turn a readback into a `Ramp` that
+  `max_deviation` could measure.
+- **`backend::Unavailable`** was added in Task 6. The plan said a stage
+  that will not initialise falls back to a mock; a mock reports success,
+  which is the one thing a missing stage must never do. `Unavailable`
+  carries the reason and returns it from every call.
+- **ts-rs resolves `export_to` from the workspace root and strips leading
+  `..`**, so the export directory is set once in `src-tauri/.cargo/config.toml`
+  via `TS_RS_EXPORT_DIR` instead of per-type paths.
+- **`ApplyReport.micros` is `u32`, not `u64`.** ts-rs maps `u64` to
+  `bigint`, but serde sends it as a JSON number, so the generated type was
+  wrong at runtime.
+- **`EngineHandle` holds its sender behind a `Mutex`.** `mpsc::Sender` is
+  `Send` but not `Sync`, and Tauri's managed state needs both.
+- **The release profile no longer sets `panic = "abort"`.** Azure holds
+  display state that only its own `Drop` impls put back, so a panic has to
+  unwind through them.
+- **The browser fallback is a generated fixture, not a hand-written
+  table.** Task 9 Step 1 planned a TypeScript stand-in with every channel
+  `Unrealised`. Generating `src/lib/preview-snapshot.json` from the real
+  router in a Rust test keeps one implementation of the routing rules and
+  leaves the field representative for design review; the banner does the
+  honesty work instead.
+- **Two claims in the existing surface were removed** as part of Step 2,
+  beyond what the plan listed: the footer advertised three global hotkeys
+  that do not exist until M7, and the preset bar offered a SCAN LIBRARIES
+  button with no scanner behind it.
+- **A real end-to-end test was added** (`the_real_engine_applies_and_restores_on_this_machine`).
+  It drives the actual backends, writes a ramp one percent off neutral,
+  and restores — the only test that touches the display on purpose.
+
+Carried forward, and written into the code as comments rather than left
+implied: recovery after a hard kill needs a dirty flag on disk and belongs
+with preset persistence in M4, and `Environment.exclusive_fullscreen` is
+routed correctly but never set until the M6 watcher can tell.
