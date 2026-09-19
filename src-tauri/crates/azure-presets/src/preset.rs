@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use azure_color::{ChannelId, ColorState};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
@@ -36,6 +38,9 @@ pub enum MatchKind {
 pub enum PresetError {
     NoSuchPreset,
     DesktopIsPermanent,
+    /// Asked to make a preset its game's chosen variant when it is not
+    /// bound to a game at all.
+    NotBound,
 }
 
 impl std::fmt::Display for PresetError {
@@ -44,6 +49,9 @@ impl std::fmt::Display for PresetError {
             PresetError::NoSuchPreset => write!(f, "no preset with that id"),
             PresetError::DesktopIsPermanent => {
                 write!(f, "the desktop preset is what applies when nothing matches, so it stays")
+            }
+            PresetError::NotBound => {
+                write!(f, "a preset bound to no game cannot be the one that game uses")
             }
         }
     }
@@ -72,6 +80,14 @@ pub struct PresetSet {
     pub next: u32,
     pub presets: Vec<Preset>,
     pub active_id: String,
+    /// Which variant wins, per executable, when a game has more than one
+    /// preset bound to it. Keyed by the bound `exe` string lowercased.
+    ///
+    /// Absent for most games, which have exactly one preset — so this is
+    /// defaulted rather than written, and a file from before variants
+    /// existed still loads.
+    #[serde(default)]
+    pub preferred: BTreeMap<String, String>,
 }
 
 fn basename(path: &str) -> &str {
@@ -92,7 +108,36 @@ impl PresetSet {
                 state: ColorState::neutral(),
             }],
             active_id: DESKTOP_ID.to_string(),
+            preferred: BTreeMap::new(),
         }
+    }
+
+    /// Every preset bound to the same executable, in stored order.
+    ///
+    /// The unit the interface calls a game: one entry for most, several
+    /// when someone keeps a different look for different circumstances.
+    pub fn variants(&self, exe: &str) -> Vec<&Preset> {
+        self.presets
+            .iter()
+            .filter(|p| p.exe.as_deref().is_some_and(|e| e.eq_ignore_ascii_case(exe)))
+            .collect()
+    }
+
+    /// The variant the watcher will choose for an executable.
+    pub fn preferred_id(&self, exe: &str) -> Option<&str> {
+        self.preferred.get(&exe.to_lowercase()).map(String::as_str)
+    }
+
+    /// Makes one variant the one its game activates.
+    ///
+    /// Recorded per executable rather than by reordering the list,
+    /// because reordering would shuffle the preset bar under someone who
+    /// only meant to choose which look a game gets.
+    pub fn set_preferred(&mut self, id: &str) -> Result<(), PresetError> {
+        let preset = self.get(id).ok_or(PresetError::NoSuchPreset)?;
+        let exe = preset.exe.clone().ok_or(PresetError::NotBound)?;
+        self.preferred.insert(exe.to_lowercase(), id.to_string());
+        Ok(())
     }
 
     pub fn get(&self, id: &str) -> Option<&Preset> {
@@ -143,6 +188,11 @@ impl PresetSet {
         if self.active_id == id {
             self.active_id = DESKTOP_ID.to_string();
         }
+        // A preference pointing at a preset that no longer exists would
+        // quietly send the next match back to the first variant, which
+        // looks like the choice being forgotten rather than the preset
+        // being deleted.
+        self.preferred.retain(|_, chosen| chosen != id);
         Ok(())
     }
 
@@ -161,6 +211,7 @@ impl PresetSet {
         if id == DESKTOP_ID && exe.is_some() {
             return Err(PresetError::DesktopIsPermanent);
         }
+        self.preferred.retain(|_, chosen| chosen != id);
         self.get_mut(id)?.exe = exe;
         Ok(())
     }
@@ -204,14 +255,31 @@ impl PresetSet {
         };
 
         if let Some(path) = path {
-            if let Some((hit, _)) = candidates().find(|(_, e)| e.eq_ignore_ascii_case(path)) {
+            let matched: Vec<_> = candidates()
+                .filter(|(_, e)| e.eq_ignore_ascii_case(path))
+                .collect();
+            if let Some(hit) = self.pick(&matched) {
                 return Some((hit, MatchKind::FullPath));
             }
         }
 
-        candidates()
-            .find(|(_, e)| basename(e).eq_ignore_ascii_case(exe))
-            .map(|(hit, _)| (hit, MatchKind::ExeName))
+        let matched: Vec<_> = candidates()
+            .filter(|(_, e)| basename(e).eq_ignore_ascii_case(exe))
+            .collect();
+        self.pick(&matched).map(|hit| (hit, MatchKind::ExeName))
+    }
+
+    /// Chooses among the presets that matched.
+    ///
+    /// The chosen variant wins if one was named; otherwise the first, so
+    /// a game with a single preset behaves exactly as it did before
+    /// variants existed.
+    fn pick<'a>(&self, matched: &[(&'a Preset, &str)]) -> Option<&'a Preset> {
+        matched
+            .iter()
+            .find(|(p, e)| self.preferred_id(e) == Some(p.id.as_str()))
+            .or_else(|| matched.first())
+            .map(|(p, _)| *p)
     }
 }
 
@@ -224,6 +292,109 @@ impl Default for PresetSet {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn with_two_variants() -> (PresetSet, String, String) {
+        let mut set = PresetSet::fresh();
+        let day = set.add("CS2 DAY".into(), Some("D:\\games\\cs2.exe".into()));
+        let night = set.add("CS2 NIGHT".into(), Some("D:\\games\\cs2.exe".into()));
+        (set, day, night)
+    }
+
+    #[test]
+    fn two_presets_can_share_a_game() {
+        let (set, day, night) = with_two_variants();
+        let variants = set.variants("D:\\games\\cs2.exe");
+        assert_eq!(variants.len(), 2);
+        assert_eq!(variants[0].id, day);
+        assert_eq!(variants[1].id, night);
+    }
+
+    #[test]
+    fn variants_are_matched_without_regard_to_case_or_which_copy_asked() {
+        let (set, _, _) = with_two_variants();
+        assert_eq!(set.variants("d:\\GAMES\\CS2.EXE").len(), 2);
+        assert_eq!(set.variants("D:\\games\\valorant.exe").len(), 0);
+    }
+
+    /// Before variants, a second preset on the same game was dead weight:
+    /// `find` returned the first and nothing could reach the second.
+    #[test]
+    fn the_chosen_variant_is_the_one_the_watcher_activates() {
+        let (mut set, day, night) = with_two_variants();
+
+        let (hit, _) = set.match_foreground(None, "cs2.exe").expect("a match");
+        assert_eq!(hit.id, day, "the first variant answers until one is chosen");
+
+        set.set_preferred(&night).unwrap();
+        let (hit, kind) = set.match_foreground(None, "cs2.exe").expect("a match");
+        assert_eq!(hit.id, night, "the chosen variant has to win");
+        assert_eq!(kind, MatchKind::ExeName);
+    }
+
+    #[test]
+    fn choosing_a_variant_survives_a_full_path_match_too() {
+        let (mut set, _, night) = with_two_variants();
+        set.set_preferred(&night).unwrap();
+
+        let (hit, kind) = set
+            .match_foreground(Some("D:\\games\\cs2.exe"), "cs2.exe")
+            .expect("a match");
+        assert_eq!(hit.id, night);
+        assert_eq!(kind, MatchKind::FullPath, "a path match is still a path match");
+    }
+
+    #[test]
+    fn a_game_with_one_preset_behaves_exactly_as_before() {
+        let mut set = PresetSet::fresh();
+        let id = set.add("VALORANT".into(), Some("D:\\games\\valorant.exe".into()));
+        let (hit, _) = set.match_foreground(None, "valorant.exe").expect("a match");
+        assert_eq!(hit.id, id);
+        assert!(set.preferred.is_empty(), "nothing to record for a lone preset");
+    }
+
+    #[test]
+    fn deleting_the_chosen_variant_falls_back_rather_than_forgetting_the_game() {
+        let (mut set, day, night) = with_two_variants();
+        set.set_preferred(&night).unwrap();
+        set.remove(&night).unwrap();
+
+        let (hit, _) = set.match_foreground(None, "cs2.exe").expect("a match");
+        assert_eq!(hit.id, day);
+        assert!(set.preferred.is_empty(), "a stale preference must not linger");
+    }
+
+    #[test]
+    fn rebinding_a_variant_drops_its_old_game_s_preference() {
+        let (mut set, day, night) = with_two_variants();
+        set.set_preferred(&night).unwrap();
+        set.bind(&night, Some("D:\\games\\valorant.exe".into())).unwrap();
+
+        let (hit, _) = set.match_foreground(None, "cs2.exe").expect("a match");
+        assert_eq!(hit.id, day, "the preference belonged to the old binding");
+    }
+
+    #[test]
+    fn an_unbound_preset_cannot_be_a_game_s_choice() {
+        let mut set = PresetSet::fresh();
+        assert_eq!(set.set_preferred(DESKTOP_ID), Err(PresetError::NotBound));
+        assert_eq!(set.set_preferred("nope"), Err(PresetError::NoSuchPreset));
+    }
+
+    #[test]
+    fn a_stored_set_from_before_variants_still_loads() {
+        // No `preferred` key at all, which is every file written until now.
+        let old = r#"{"version":1,"next":2,"presets":[{"id":"desktop","name":"DESKTOP","exe":null,"mode":"manual","state":null}],"activeId":"desktop"}"#;
+        let parsed: Result<PresetSet, _> = serde_json::from_str(old);
+        // The state field is the only reason this may not parse; what is
+        // being asserted is that a missing `preferred` is not the reason.
+        if let Err(e) = &parsed {
+            assert!(
+                !e.to_string().contains("preferred"),
+                "a missing preferred must default, got: {e}"
+            );
+        }
+    }
+
 
     fn bound(set: &mut PresetSet, name: &str, exe: &str) -> String {
         set.add(name.to_string(), Some(exe.to_string()))

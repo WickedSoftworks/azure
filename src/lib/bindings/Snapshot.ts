@@ -20,4 +20,9 @@ matchedBy: MatchKind | null, state: ColorState, target: LutTarget,
  * Why a stage is missing, or what was recovered at startup. Straight
  * to the event log.
  */
-notices: Array<string>, };
+notices: Array<string>, 
+/**
+ * Which variant each game with more than one preset will activate,
+ * as `exe` (lowercased) to preset id.
+ */
+preferred: { [key in string]: string }, };

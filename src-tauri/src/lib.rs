@@ -102,6 +102,7 @@ pub fn run() {
             commands::select_preset,
             commands::rename_preset,
             commands::bind_preset,
+            commands::set_preferred,
             commands::get_residency,
             commands::set_binding,
             commands::reset_bindings,

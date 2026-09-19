@@ -106,6 +106,16 @@ pub fn bind_preset(
     flatten(engine.bind_preset(id, exe))
 }
 
+/// Makes a preset the variant its game activates.
+///
+/// Takes effect the next time that game comes to the foreground. It does
+/// not move the display now: the point of choosing is to set up for
+/// later, and changing the screen would be a surprise.
+#[tauri::command]
+pub fn set_preferred(engine: State<'_, EngineHandle>, id: String) -> Answer<()> {
+    flatten(engine.set_preferred(id))
+}
+
 // ── residency ───────────────────────────────────────────────────────────
 
 use crate::residency::{self, Residency, ResidencyView};

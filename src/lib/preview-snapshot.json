@@ -204,5 +204,6 @@
   "target": "all",
   "notices": [
     "no colour core in this session: nothing here is reaching a display"
-  ]
+  ],
+  "preferred": {}
 }

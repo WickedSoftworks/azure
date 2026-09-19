@@ -122,6 +122,17 @@ export function bindPreset(id: string, exe: string | null): Promise<void> {
 }
 
 /**
+ * Makes one variant the one its game activates.
+ *
+ * Takes effect the next time that game is in front; it deliberately does
+ * not change what is on the screen now.
+ */
+export function setPreferred(id: string): Promise<void> {
+  if (!isTauri()) return refuse();
+  return invoke<void>("set_preferred", { id });
+}
+
+/**
  * Fires when the watcher, rather than the person, changed which preset is
  * on the screen. Returns its own unsubscribe.
  */

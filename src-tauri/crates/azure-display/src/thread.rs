@@ -51,6 +51,9 @@ pub struct Snapshot {
     /// Why a stage is missing, or what was recovered at startup. Straight
     /// to the event log.
     pub notices: Vec<String>,
+    /// Which variant each game with more than one preset will activate,
+    /// as `exe` (lowercased) to preset id.
+    pub preferred: std::collections::BTreeMap<String, String>,
 }
 
 /// The engine stopped answering: either `shutdown` was called, or the
@@ -84,6 +87,8 @@ enum Msg {
     ToggleEnabled(Sender<ApplyReport>),
     RenamePreset(String, String, Sender<Result<(), PresetError>>),
     BindPreset(String, Option<String>, Sender<Result<(), PresetError>>),
+    /// Makes one variant the one its game activates.
+    SetPreferred(String, Sender<Result<(), PresetError>>),
     Foreground(Option<String>, String, Sender<ApplyReport>),
     Snapshot(Sender<Snapshot>),
     Restore(Sender<()>),
@@ -358,6 +363,14 @@ impl EngineHandle {
                             }
                             let _ = reply.send(answer);
                         }
+                        Msg::SetPreferred(id, reply) => {
+                            let answer = w.set.set_preferred(&id);
+                            if answer.is_ok() {
+                                w.unsaved = true;
+                                w.flush();
+                            }
+                            let _ = reply.send(answer);
+                        }
                         Msg::Foreground(path, exe, reply) => {
                             let hit = w
                                 .set
@@ -395,6 +408,7 @@ impl EngineHandle {
                                 state,
                                 target: w.target.clone(),
                                 notices: w.notices.clone(),
+                                preferred: w.set.preferred.clone(),
                             });
                         }
                         Msg::Restore(reply) => {
@@ -498,6 +512,14 @@ impl EngineHandle {
 
     pub fn toggle_enabled(&self) -> Result<ApplyReport, EngineDown> {
         self.ask(Msg::ToggleEnabled)
+    }
+
+    /// Makes a preset the variant its game uses. Takes effect the next
+    /// time that game comes to the foreground; it does not change what is
+    /// on the screen now, which would be a surprise when the point was to
+    /// set up for later.
+    pub fn set_preferred(&self, id: String) -> Result<Result<(), PresetError>, EngineDown> {
+        self.ask(|reply| Msg::SetPreferred(id, reply))
     }
 
     pub fn snapshot(&self) -> Result<Snapshot, EngineDown> {
@@ -623,6 +645,44 @@ mod tests {
         assert_eq!(snap.presets.len(), 1);
         assert_eq!(snap.active_id, DESKTOP_ID);
         assert_eq!(snap.matched_by, None);
+    }
+
+    #[test]
+    fn a_chosen_variant_is_what_the_foreground_activates() {
+        let engine = EngineHandle::spawn_mock();
+        let day = bound(&engine, "CS2 DAY", "D:\\games\\cs2.exe");
+        let night = bound(&engine, "CS2 NIGHT", "D:\\games\\cs2.exe");
+
+        // Until a choice is made the first variant answers, which is how
+        // a single-preset game has always behaved.
+        engine.foreground(None, "cs2.exe".into()).unwrap();
+        assert_eq!(engine.snapshot().unwrap().active_id, day);
+
+        engine.set_preferred(night.clone()).unwrap().unwrap();
+        engine.foreground(None, "cs2.exe".into()).unwrap();
+        let snap = engine.snapshot().unwrap();
+        assert_eq!(snap.active_id, night, "the chosen variant has to win");
+        assert_eq!(snap.matched_by, Some(MatchKind::ExeName));
+        assert_eq!(
+            snap.preferred.get("d:\\games\\cs2.exe"),
+            Some(&night),
+            "the interface needs to know which one is chosen"
+        );
+    }
+
+    #[test]
+    fn choosing_a_variant_does_not_change_what_is_on_the_screen_now() {
+        let engine = EngineHandle::spawn_mock();
+        let _day = bound(&engine, "CS2 DAY", "D:\\games\\cs2.exe");
+        let night = bound(&engine, "CS2 NIGHT", "D:\\games\\cs2.exe");
+
+        let before = engine.snapshot().unwrap().active_id;
+        engine.set_preferred(night).unwrap().unwrap();
+        assert_eq!(
+            engine.snapshot().unwrap().active_id,
+            before,
+            "setting up for later must not move the display now"
+        );
     }
 
     #[test]
@@ -911,6 +971,7 @@ mod tests {
             matched_by: None,
             state,
             target: LutTarget::All,
+            preferred: set.preferred.clone(),
             notices: vec![
                 "no colour core in this session: nothing here is reaching a display".into(),
             ],

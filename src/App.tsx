@@ -10,6 +10,7 @@ import { PresetBar } from "@/components/PresetBar";
 import { ScanPanel } from "@/components/ScanPanel";
 import { SignalChain } from "@/components/SignalChain";
 import { StatusStrip } from "@/components/StatusStrip";
+import { VariantPanel } from "@/components/VariantPanel";
 import { WarningRow } from "@/components/WarningRow";
 import {
   addPreset,
@@ -28,6 +29,7 @@ import {
   selectPreset,
   setAutostart,
   setBinding,
+  setPreferred,
   setBypass as setBypassIpc,
   setEnabled as setEnabledIpc,
   setLutTarget,
@@ -82,6 +84,7 @@ export default function App() {
   const [presets, setPresets] = useState<Preset[]>([]);
   const [activeId, setActiveId] = useState("");
   const [matchedBy, setMatchedBy] = useState<MatchKind | null>(null);
+  const [preferred, setPreferredMap] = useState<Record<string, string>>({});
   const [state, setState] = useState<ColorState | null>(null);
   const [enabled, setEnabled] = useState(true);
   const [target, setTarget] = useState<LutTarget>("all");
@@ -125,6 +128,7 @@ export default function App() {
     setPresets(snap.presets);
     setActiveId(snap.activeId);
     setMatchedBy(snap.matchedBy);
+    setPreferredMap(snap.preferred);
     setState(snap.state);
     setEnabled(snap.enabled);
     setTarget(snap.target);
@@ -363,6 +367,44 @@ export default function App() {
         .catch(complain("SCAN"));
     },
     [complain, refresh, write],
+  );
+
+  /**
+   * Adds another look for a game already bound, and selects it so it can
+   * be tuned straight away. It starts neutral, like every new preset.
+   */
+  const addVariant = useCallback(
+    (exe: string, name: string) => {
+      addPreset(name, exe)
+        .then((id) => {
+          write({
+            kind: "activate",
+            subject: name,
+            detail: `another look for ${exe} · starts neutral`,
+          });
+          return selectPreset(id).then(() => refresh());
+        })
+        .catch(complain("PRESET"));
+    },
+    [complain, refresh, write],
+  );
+
+  /** Chooses which look a game activates. Does not touch the display. */
+  const useForGame = useCallback(
+    (id: string) => {
+      setPreferred(id)
+        .then(() => refresh())
+        .then(() => {
+          const preset = presets.find((p) => p.id === id);
+          write({
+            kind: "activate",
+            subject: preset?.name ?? id,
+            detail: "this is the look its game will activate from now on",
+          });
+        })
+        .catch(complain("PRESET"));
+    },
+    [complain, presets, refresh, write],
   );
 
   const rescan = useCallback(() => {
@@ -610,6 +652,16 @@ export default function App() {
               onDismiss={() => setScan(null)}
             />
           )}
+
+          <VariantPanel
+            presets={presets}
+            preferred={preferred}
+            activeId={activeId}
+            live={LIVE}
+            onAddVariant={addVariant}
+            onUse={useForGame}
+            onSelect={choose}
+          />
 
           {residency && (
             <HotkeyPanel
