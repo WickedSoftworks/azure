@@ -54,6 +54,16 @@ pub trait RampBackend: Send {
     fn clear(&mut self) -> Result<(), BackendError>;
 }
 
+/// What was in front: its full path when the process would give one up,
+/// and always its executable name.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct Foreground {
+    pub path: Option<String>,
+    pub exe: String,
+}
+
 /// What came of asking Windows to lift the GDI gamma clamp.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase", tag = "kind")]

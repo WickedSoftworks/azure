@@ -6,6 +6,7 @@ description = "Windows colour backends and the engine that owns display state."
 
 [dependencies]
 azure-color = { path = "../azure-color" }
+azure-presets = { path = "../azure-presets" }
 serde = { version = "1", features = ["derive"] }
 thiserror = "2"
 ts-rs = "12"
@@ -19,6 +20,10 @@ windows = { version = "0.62", features = [
   "Win32_UI_ColorSystem",
   "Win32_Devices_Display",
   "Win32_System_Registry",
+  "Win32_System_Threading",
+  "Win32_System_Diagnostics_ToolHelp",
+  "Win32_UI_Accessibility",
+  "Win32_UI_WindowsAndMessaging",
 ] }
 
 [dev-dependencies]

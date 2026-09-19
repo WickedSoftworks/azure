@@ -7,6 +7,7 @@
  * interface has to follow.
  */
 
+export type { ActivationMode } from "./ActivationMode";
 export type { ApplyReport } from "./ApplyReport";
 export type { ChannelId } from "./ChannelId";
 export type { ChannelRange } from "./ChannelRange";
@@ -15,8 +16,11 @@ export type { ColorState } from "./ColorState";
 export type { DisplayInfo } from "./DisplayInfo";
 export type { Environment } from "./Environment";
 export type { Fidelity } from "./Fidelity";
+export type { Foreground } from "./Foreground";
 export type { GammaRangeOutcome } from "./GammaRangeOutcome";
 export type { LutTarget } from "./LutTarget";
+export type { MatchKind } from "./MatchKind";
+export type { Preset } from "./Preset";
 export type { Snapshot } from "./Snapshot";
 export type { Stage } from "./Stage";
 export type { StageLanding } from "./StageLanding";

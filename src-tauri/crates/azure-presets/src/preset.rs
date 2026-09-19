@@ -32,8 +32,7 @@ pub enum MatchKind {
     ExeName,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
-#[ts(export)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PresetError {
     NoSuchPreset,
     DesktopIsPermanent,
@@ -64,9 +63,8 @@ pub struct Preset {
     pub state: ColorState,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
 pub struct PresetSet {
     pub version: u32,
     /// The next id to hand out. Stored so a deleted preset's id is never

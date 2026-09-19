@@ -4,12 +4,20 @@ import type { ColorState } from "./ColorState";
 import type { DisplayInfo } from "./DisplayInfo";
 import type { Environment } from "./Environment";
 import type { LutTarget } from "./LutTarget";
+import type { MatchKind } from "./MatchKind";
+import type { Preset } from "./Preset";
 
 /**
  * Everything the surface needs to draw itself once.
  */
-export type Snapshot = { channels: Array<ChannelReport>, displays: Array<DisplayInfo>, environment: Environment, enabled: boolean, state: ColorState, target: LutTarget, 
+export type Snapshot = { channels: Array<ChannelReport>, displays: Array<DisplayInfo>, environment: Environment, enabled: boolean, presets: Array<Preset>, activeId: string, 
 /**
- * Why a stage is missing, if one is. Straight to the event log.
+ * How the active preset was reached, when the watcher reached it.
+ * `None` means someone clicked it.
+ */
+matchedBy: MatchKind | null, state: ColorState, target: LutTarget, 
+/**
+ * Why a stage is missing, or what was recovered at startup. Straight
+ * to the event log.
  */
 notices: Array<string>, };

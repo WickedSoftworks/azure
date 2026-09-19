@@ -3,6 +3,7 @@
 mod displays;
 mod lut;
 mod magnifier;
+mod watch;
 
 pub use displays::{
     color_filters_active, enumerate_adapters, enumerate_displays, gamma_range_unlocked,
@@ -10,6 +11,7 @@ pub use displays::{
 };
 pub use lut::GdiRamp;
 pub use magnifier::MagnifierMatrix;
+pub use watch::{current_foreground, Watcher};
 
 #[cfg(test)]
 mod tests {

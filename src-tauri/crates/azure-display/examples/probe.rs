@@ -7,6 +7,8 @@
 //! not predict.
 
 use azure_display::{environment, real_core};
+#[cfg(windows)]
+use azure_display::win::current_foreground;
 
 fn main() {
     let (core, notices) = real_core();
@@ -31,6 +33,22 @@ fn main() {
     println!("  gamma range unlocked   {}", env.gamma_range_unlocked);
     println!("  colour filters active  {}", env.color_filters_active);
     println!("  exclusive fullscreen   {} (never probed before M6)", env.exclusive_fullscreen);
+
+    #[cfg(windows)]
+    {
+        println!("
+foreground right now:");
+        match current_foreground() {
+            Some(f) => {
+                println!("  exe   {}", f.exe);
+                match f.path {
+                    Some(p) => println!("  path  {p}"),
+                    None => println!("  path  (refused: elevated, so presets match by name)"),
+                }
+            }
+            None => println!("  (nothing resolvable)"),
+        }
+    }
 
     if notices.is_empty() {
         println!("\nboth stages initialised");
