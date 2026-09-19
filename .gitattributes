@@ -1,0 +1,6 @@
+# ts-rs and the preview fixture are written by `cargo test`, always with
+# LF. Without this, git checks them out as CRLF on Windows and every test
+# run leaves fifteen generated files showing as modified with no content
+# change in them.
+src/lib/bindings/*.ts text eol=lf
+src/lib/preview-snapshot.json text eol=lf
