@@ -155,6 +155,42 @@
     "colorFiltersActive": false
   },
   "enabled": true,
+  "presets": [
+    {
+      "id": "desktop",
+      "name": "DESKTOP",
+      "exe": null,
+      "mode": "manual",
+      "state": {
+        "vibrance": 100,
+        "saturation": 100,
+        "hue": 0,
+        "brightness": 0,
+        "contrast": 100,
+        "gamma": 100,
+        "temperature": 0,
+        "tint": 0
+      }
+    },
+    {
+      "id": "p1",
+      "name": "EXAMPLE GAME",
+      "exe": "D:\\games\\example.exe",
+      "mode": "focused",
+      "state": {
+        "vibrance": 100,
+        "saturation": 100,
+        "hue": 0,
+        "brightness": 0,
+        "contrast": 100,
+        "gamma": 100,
+        "temperature": 0,
+        "tint": 0
+      }
+    }
+  ],
+  "activeId": "desktop",
+  "matchedBy": null,
   "state": {
     "vibrance": 100,
     "saturation": 100,

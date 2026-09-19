@@ -1,16 +1,27 @@
 import { cn } from "cn";
-import type { DisplayInfo, Environment } from "@/lib/model";
+import type { DisplayInfo, Environment, Preset } from "@/lib/model";
 
 interface Props {
   environment: Environment;
   displays: DisplayInfo[];
   enabled: boolean;
+  preset: Preset | undefined;
+  /** True when the watcher chose this preset rather than the person. */
+  automatic: boolean;
   /** False in a browser session, where nothing reaches a display. */
   live: boolean;
   onToggle: () => void;
 }
 
-export function StatusStrip({ environment, displays, enabled, live, onToggle }: Props) {
+export function StatusStrip({
+  environment,
+  displays,
+  enabled,
+  preset,
+  automatic,
+  live,
+  onToggle,
+}: Props) {
   const hdr = environment.hdrActive;
 
   return (
@@ -28,10 +39,11 @@ export function StatusStrip({ environment, displays, enabled, live, onToggle }: 
         {!live ? "NO CORE" : enabled ? "ACTIVE" : "OFF"}
       </button>
 
-      <span className="ng-value truncate">DESKTOP</span>
+      <span className="ng-value truncate">{preset?.name ?? "—"}</span>
 
       <span className="ng-label hidden sm:inline">
-        {enabled && live ? "applied live" : "not applied"}
+        {automatic ? "activated by focus" : "selected by hand"}
+        {enabled && live ? " · applied" : " · not applied"}
       </span>
 
       <div className="ml-auto flex items-center gap-4">

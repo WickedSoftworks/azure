@@ -1,26 +1,23 @@
+import { useEffect, useRef, useState } from "react";
 import { cn } from "cn";
-import type { ColorState } from "@/lib/model";
-
-/**
- * Presets land in M4 with persistence and in M5 with the scanners. The
- * shape lives here, beside the only thing that draws it, until there is a
- * core type to replace it.
- */
-export interface Preset {
-  id: string;
-  name: string;
-  /** null for the desktop default, which binds to nothing. */
-  exe: string | null;
-  state: ColorState;
-}
+import type { MatchKind, Preset } from "@/lib/model";
 
 interface Props {
   presets: Preset[];
   activeId: string;
+  /** How the watcher reached the active preset, if it did. */
+  matchedBy: MatchKind | null;
+  /** True while waiting for the next window to take focus. */
+  capturing: boolean;
+  /** False in a browser session, where none of this can do anything. */
+  live: boolean;
   onSelect: (id: string) => void;
-  /** Absent until the library scanner exists. A button that does nothing
-   *  is worse than no button. */
-  onScan?: () => void;
+  onBrowse: () => void;
+  onCapture: () => void;
+  onCancelCapture: () => void;
+  onRename: (id: string, name: string) => void;
+  onUnbind: (id: string) => void;
+  onDelete: (id: string) => void;
 }
 
 function basename(p: string): string {
@@ -28,34 +25,60 @@ function basename(p: string): string {
   return i >= 0 ? p.slice(i + 1) : p;
 }
 
-export function PresetBar({ presets, activeId, onSelect, onScan }: Props) {
-  const active = presets.find((p) => p.id === activeId);
+const MATCH_LABEL: Record<MatchKind, string> = {
+  fullPath: "matched by full path",
+  exeName: "matched by exe name",
+};
 
-  if (presets.length === 0) {
-    return (
-      <section className="ng-rule-t flex flex-wrap items-baseline gap-x-4 gap-y-1 bg-field px-4 py-3 shrink-0">
-        <span className="ng-label">NO PRESETS</span>
-        <p className="text-dim">
-          Per-game presets arrive with the library scanner. Until then Azure
-          holds one state and applies it to the desktop.
-        </p>
-        {onScan && (
-          <button
-            type="button"
-            onClick={onScan}
-            className="ml-auto bg-plate px-3 py-1 ng-label text-text hover:bg-rule"
-          >
-            SCAN LIBRARIES
-          </button>
-        )}
-      </section>
-    );
-  }
+/**
+ * The preset row, and the only place a preset is created, named or
+ * unbound. Renaming and deleting happen in place rather than in a dialog:
+ * the field is a table, and a modal over a table is a worse table.
+ */
+export function PresetBar({
+  presets,
+  activeId,
+  matchedBy,
+  capturing,
+  live,
+  onSelect,
+  onBrowse,
+  onCapture,
+  onCancelCapture,
+  onRename,
+  onUnbind,
+  onDelete,
+}: Props) {
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const input = useRef<HTMLInputElement>(null);
+
+  const active = presets.find((p) => p.id === activeId);
+  const isDesktop = active?.exe === null;
+
+  useEffect(() => {
+    if (renaming) input.current?.select();
+  }, [renaming]);
+
+  // A half-finished rename or an armed delete should not follow you to
+  // another preset.
+  useEffect(() => {
+    setRenaming(null);
+    setConfirming(null);
+  }, [activeId]);
+
+  const commitRename = () => {
+    const name = draft.trim();
+    if (renaming && name) onRename(renaming, name);
+    setRenaming(null);
+  };
 
   return (
     <section className="ng-rule-t bg-field px-4 py-3 shrink-0">
       <div className="flex flex-wrap items-center gap-2">
         <span className="ng-label mr-1">PRESETS</span>
+
         {presets.map((p) => (
           <button
             key={p.id}
@@ -72,33 +95,143 @@ export function PresetBar({ presets, activeId, onSelect, onScan }: Props) {
             {p.name}
           </button>
         ))}
-        {onScan && (
-          <button
-            type="button"
-            onClick={onScan}
-            className="ml-auto ng-label text-dim hover:text-text"
-          >
-            + SCAN LIBRARIES
-          </button>
-        )}
+
+        <div className="ml-auto flex items-center gap-4">
+          {capturing ? (
+            <>
+              <span className="ng-label text-signal">
+                FOCUS THE GAME — ITS NEXT WINDOW IS CAPTURED
+              </span>
+              <button
+                type="button"
+                onClick={onCancelCapture}
+                className="ng-label text-dim hover:text-text"
+              >
+                CANCEL
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={onCapture}
+                disabled={!live}
+                className="ng-label text-dim hover:text-text disabled:hover:text-dim"
+              >
+                + CAPTURE WINDOW
+              </button>
+              <button
+                type="button"
+                onClick={onBrowse}
+                disabled={!live}
+                className="ng-label text-dim hover:text-text disabled:hover:text-dim"
+              >
+                + ADD GAME
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
-      <div className="mt-2 flex w-full min-w-0 items-baseline gap-3">
+      <div className="mt-2 flex w-full min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
         <span className="ng-label shrink-0">BOUND</span>
+
         {active?.exe ? (
           <>
-            <span className="ng-selectable ng-value min-w-0 truncate">{basename(active.exe)}</span>
+            <span className="ng-selectable ng-value min-w-0 truncate">
+              {basename(active.exe)}
+            </span>
             <span
               className="ng-selectable hidden min-w-0 flex-1 truncate text-dim sm:block"
               title={active.exe}
             >
               {active.exe}
             </span>
+            {matchedBy && (
+              <span className="ng-label shrink-0 text-ok">{MATCH_LABEL[matchedBy]}</span>
+            )}
           </>
         ) : (
-          <span className="text-dim">
-            Nothing — this preset applies when no bound game is running.
+          <span className="flex-1 text-dim">
+            {isDesktop
+              ? "Nothing — this is what applies when no bound game is in front."
+              : "Nothing yet. Add a game to bind this preset to it."}
           </span>
+        )}
+
+        {active && !isDesktop && (
+          <div className="flex shrink-0 items-baseline gap-3">
+            {renaming === active.id ? (
+              <>
+                <input
+                  ref={input}
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") commitRename();
+                    if (e.key === "Escape") setRenaming(null);
+                  }}
+                  className="ng-value w-[18ch] border-b border-signal bg-transparent px-1 uppercase outline-none"
+                  aria-label="Preset name"
+                />
+                <button type="button" onClick={commitRename} className="ng-label text-signal">
+                  SAVE
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setDraft(active.name);
+                  setRenaming(active.id);
+                }}
+                className="ng-label text-dim hover:text-text"
+              >
+                RENAME
+              </button>
+            )}
+
+            {active.exe && (
+              <button
+                type="button"
+                onClick={() => onUnbind(active.id)}
+                className="ng-label text-dim hover:text-text"
+              >
+                UNBIND
+              </button>
+            )}
+
+            {confirming === active.id ? (
+              <>
+                <span className="ng-label text-alert">DELETE?</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onDelete(active.id);
+                    setConfirming(null);
+                  }}
+                  className="ng-label text-alert hover:text-bright"
+                >
+                  YES
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirming(null)}
+                  className="ng-label text-dim hover:text-text"
+                >
+                  NO
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirming(active.id)}
+                className="ng-label text-dim hover:text-alert"
+              >
+                DELETE
+              </button>
+            )}
+          </div>
         )}
       </div>
     </section>

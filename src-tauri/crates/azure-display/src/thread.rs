@@ -136,18 +136,17 @@ impl Worker {
     /// Keeps the on-disk marker in step with the display, so a run that
     /// dies leaves behind the fact that it did.
     fn sync_dirty_marker(&mut self) {
-        match (self.core.is_dirty(), self.marked_dirty) {
-            (true, false) => {
-                if self.store.mark_dirty().is_ok() {
-                    self.marked_dirty = true;
-                }
-            }
-            (false, true) => {
-                if self.store.clear_dirty().is_ok() {
-                    self.marked_dirty = false;
-                }
-            }
-            _ => {}
+        let wanted = self.core.is_dirty();
+        if wanted == self.marked_dirty {
+            return;
+        }
+        let wrote = if wanted {
+            self.store.mark_dirty()
+        } else {
+            self.store.clear_dirty()
+        };
+        if wrote.is_ok() {
+            self.marked_dirty = wanted;
         }
     }
 
@@ -762,6 +761,61 @@ mod tests {
         );
         assert!(!Store::new(dir).was_dirty(), "and the marker cleared");
         engine.shutdown().unwrap();
+    }
+
+    /// Writes the fixture the interface falls back to in a browser
+    /// session.
+    ///
+    /// `bun run dev` has no Rust core, so the surface needs something to
+    /// draw while the design is being worked on. Generating it here rather
+    /// than hand-writing a TypeScript copy keeps one implementation of the
+    /// routing: the stage and fidelity in that file are the real router's
+    /// output for an ordinary SDR desktop. The displays and the second
+    /// preset are placeholders, and the interface says so in a banner
+    /// rather than in small print.
+    #[test]
+    fn export_preview_snapshot() {
+        use azure_presets::ActivationMode;
+
+        let environment = Environment::ideal();
+        let mut set = PresetSet::fresh();
+        let id = set.add("EXAMPLE GAME".into(), Some(r"D:\games\example.exe".to_string()));
+        set.set_mode(&id, ActivationMode::Focused).unwrap();
+        let state = set.active().state;
+
+        let snapshot = Snapshot {
+            channels: azure_color::plan(&state, &environment).reports,
+            displays: vec![
+                DisplayInfo {
+                    key: "PREVIEW-1".into(),
+                    name: "DISPLAY 1".into(),
+                    primary: true,
+                    hdr: false,
+                },
+                DisplayInfo {
+                    key: "PREVIEW-2".into(),
+                    name: "DISPLAY 2".into(),
+                    primary: false,
+                    hdr: false,
+                },
+            ],
+            environment,
+            enabled: true,
+            presets: set.presets.clone(),
+            active_id: set.active_id.clone(),
+            matched_by: None,
+            state,
+            target: LutTarget::All,
+            notices: vec![
+                "no colour core in this session: nothing here is reaching a display".into(),
+            ],
+        };
+
+        let out = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../src/lib/preview-snapshot.json");
+        let json = serde_json::to_string_pretty(&snapshot).expect("snapshot serialises");
+        std::fs::write(&out, json + "
+").expect("preview snapshot written");
     }
 
     /// The only test that drives the real backends end to end.

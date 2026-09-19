@@ -11,6 +11,7 @@
 import type { ChannelRange, Fidelity, Stage } from "./bindings";
 
 export type {
+  ActivationMode,
   ApplyReport,
   ChannelId,
   ChannelRange,
@@ -19,8 +20,11 @@ export type {
   DisplayInfo,
   Environment,
   Fidelity,
+  Foreground,
   GammaRangeOutcome,
   LutTarget,
+  MatchKind,
+  Preset,
   Snapshot,
   Stage,
   StageLanding,
