@@ -105,3 +105,76 @@ pub fn bind_preset(
 ) -> Answer<()> {
     flatten(engine.bind_preset(id, exe))
 }
+
+// ── residency ───────────────────────────────────────────────────────────
+
+use crate::residency::{self, Residency, ResidencyView};
+use azure_display::{Action, BindingSet, Chord, Registration};
+use std::sync::Mutex;
+use tauri::AppHandle;
+
+#[tauri::command]
+pub fn get_residency(state: State<'_, Mutex<Residency>>) -> Answer<ResidencyView> {
+    state
+        .lock()
+        .map(|r| r.view())
+        .map_err(|_| "the settings are held by a thread that panicked".to_string())
+}
+
+/// Binds one action, or clears it when `chord` is absent.
+///
+/// The chord arrives as the text the capture widget showed, and is parsed
+/// here so that an unbindable combination is refused with the reason
+/// rather than stored and quietly never registered.
+#[tauri::command]
+pub fn set_binding(
+    app: AppHandle,
+    action: Action,
+    chord: Option<String>,
+) -> Answer<Vec<Registration>> {
+    let chord = match chord.as_deref() {
+        Some(text) => Some(Chord::parse(text).map_err(|e| e.to_string())?),
+        None => None,
+    };
+    Ok(residency::set_binding(&app, action, chord))
+}
+
+/// Puts every binding back to what Azure ships with.
+#[tauri::command]
+pub fn reset_bindings(app: AppHandle) -> Answer<Vec<Registration>> {
+    Ok(residency::set_bindings(&app, BindingSet::default()))
+}
+
+#[tauri::command]
+pub fn set_autostart(enabled: bool) -> Answer<bool> {
+    azure_display::set_autostart(enabled)?;
+    // Read it back rather than reporting what was asked for: the answer
+    // the interface shows should be the state of the machine.
+    Ok(azure_display::autostart_enabled())
+}
+
+/// Relaunches Azure with administrator rights and exits this one.
+///
+/// Two Azures must never hold the display at once, so the exit is not
+/// optional — and it happens only once Windows has confirmed the new
+/// process was started.
+#[tauri::command]
+pub fn restart_elevated(app: AppHandle) -> Answer<()> {
+    azure_display::restart_elevated()?;
+    app.exit(0);
+    Ok(())
+}
+
+/// Hides the window without exiting. The same thing the close button
+/// does, for a button inside the interface that wants to say so.
+#[tauri::command]
+pub fn hide_to_tray(app: AppHandle) -> Answer<()> {
+    crate::hide_window(&app);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn show_window(app: AppHandle) -> Answer<()> {
+    crate::tray::show_window(&app);
+    Ok(())
+}
