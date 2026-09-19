@@ -4,13 +4,14 @@ import {
   FIDELITY_LABEL,
   formatValue,
   isInert,
-  type Channel,
+  stageLabel,
+  type ChannelReport,
 } from "@/lib/model";
 
 const SEGMENTS = 40;
 
 interface Props {
-  channel: Channel;
+  channel: ChannelReport;
   value: number;
   bypassed: boolean;
   onChange: (v: number) => void;
@@ -23,11 +24,12 @@ interface Props {
  * row is a readout first and a control second.
  */
 export function ChannelRow({ channel, value, bypassed, onChange, onFocus }: Props) {
-  const span = channel.max - channel.min;
-  const ratio = (value - channel.min) / span;
-  const neutralRatio = (channel.neutral - channel.min) / span;
+  const { range } = channel;
+  const span = range.max - range.min;
+  const ratio = (value - range.min) / span;
+  const neutralRatio = (range.neutral - range.min) / span;
   const inert = isInert(channel.fidelity) || bypassed;
-  const offNeutral = value !== channel.neutral;
+  const offNeutral = value !== range.neutral;
 
   const filledFrom = Math.min(ratio, neutralRatio);
   const filledTo = Math.max(ratio, neutralRatio);
@@ -36,9 +38,9 @@ export function ChannelRow({ channel, value, bypassed, onChange, onFocus }: Prop
   // panel. Hatching the whole row would overstate it; hatching the dead
   // ends says exactly which part of this slider does nothing.
   const reachFrom = channel.reachable
-    ? (channel.reachable[0] - channel.min) / span
+    ? (channel.reachable[0] - range.min) / span
     : 0;
-  const reachTo = channel.reachable ? (channel.reachable[1] - channel.min) / span : 1;
+  const reachTo = channel.reachable ? (channel.reachable[1] - range.min) / span : 1;
 
   return (
     <div
@@ -60,9 +62,9 @@ export function ChannelRow({ channel, value, bypassed, onChange, onFocus }: Prop
 
       <SliderPrimitive.Root
         className="relative flex h-[var(--ng-cell)] w-full touch-none select-none items-center"
-        min={channel.min}
-        max={channel.max}
-        step={channel.step}
+        min={range.min}
+        max={range.max}
+        step={range.step}
         value={[value]}
         aria-label={channel.name}
         onValueChange={([v]) => onChange(v)}
@@ -115,12 +117,10 @@ export function ChannelRow({ channel, value, bypassed, onChange, onFocus }: Prop
           offNeutral && !inert && "text-signal",
         )}
       >
-        {formatValue(channel, value)}
+        {formatValue(range, value)}
       </span>
 
-      <span className="ng-label hidden sm:block">
-        {channel.stage === "matrix" ? "MATRIX" : "LUT"}
-      </span>
+      <span className="ng-label hidden sm:block">{stageLabel(channel.stage)}</span>
 
       <span
         className={cn(
@@ -130,7 +130,7 @@ export function ChannelRow({ channel, value, bypassed, onChange, onFocus }: Prop
           channel.fidelity === "clamped" && "text-warn",
           isInert(channel.fidelity) && "text-alert",
         )}
-        title={channel.note}
+        title={channel.note ?? undefined}
       >
         {bypassed && !isInert(channel.fidelity)
           ? "BYPASS"

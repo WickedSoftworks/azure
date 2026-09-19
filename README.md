@@ -31,8 +31,19 @@ APIs — the same class of call the NVIDIA Control Panel makes. See
 
 ## Status
 
-Early. The visual direction and the first surface are built; the Rust colour
-core is in progress. See `docs/superpowers/specs/` for the design spec.
+Early, and specific about it. The colour core is built and the surface is
+wired to it: both backends, capability routing at op-group granularity,
+every ramp write verified by readback, and a field that draws what the core
+reports rather than a mock-up of it.
+
+Not built yet: preset persistence (M4), the launcher scanners (M5), the
+focus watcher that switches presets for you (M6), global hotkeys and tray
+residency (M7). Until those land Azure holds one state and applies it to the
+desktop while its window is open — the setup half of the product without the
+invisible half.
+
+See `docs/superpowers/specs/` for the design spec and
+`docs/superpowers/plans/` for the milestone plans.
 
 ## Develop
 

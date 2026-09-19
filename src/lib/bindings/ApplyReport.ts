@@ -9,8 +9,11 @@ import type { StageLanding } from "./StageLanding";
 export type ApplyReport = { reports: Array<ChannelReport>, stages: Array<StageLanding>, 
 /**
  * Wall time of the writes, microseconds. The field prints it.
+ *
+ * u32, not u64: it crosses to JavaScript as a JSON number, and an
+ * apply that took over an hour is not a thing that happens.
  */
-micros: bigint, 
+micros: number, 
 /**
  * True while display state differs from the panel's own defaults.
  */

@@ -1,11 +1,26 @@
 import { cn } from "cn";
-import type { Preset } from "@/lib/model";
+import type { ColorState } from "@/lib/model";
+
+/**
+ * Presets land in M4 with persistence and in M5 with the scanners. The
+ * shape lives here, beside the only thing that draws it, until there is a
+ * core type to replace it.
+ */
+export interface Preset {
+  id: string;
+  name: string;
+  /** null for the desktop default, which binds to nothing. */
+  exe: string | null;
+  state: ColorState;
+}
 
 interface Props {
   presets: Preset[];
   activeId: string;
   onSelect: (id: string) => void;
-  onScan: () => void;
+  /** Absent until the library scanner exists. A button that does nothing
+   *  is worse than no button. */
+  onScan?: () => void;
 }
 
 function basename(p: string): string {
@@ -18,18 +33,21 @@ export function PresetBar({ presets, activeId, onSelect, onScan }: Props) {
 
   if (presets.length === 0) {
     return (
-      <section className="ng-rule-t flex items-center gap-4 bg-field px-4 py-3 shrink-0">
+      <section className="ng-rule-t flex flex-wrap items-baseline gap-x-4 gap-y-1 bg-field px-4 py-3 shrink-0">
         <span className="ng-label">NO PRESETS</span>
         <p className="text-dim">
-          Scan your libraries, or drop a game executable onto this window.
+          Per-game presets arrive with the library scanner. Until then Azure
+          holds one state and applies it to the desktop.
         </p>
-        <button
-          type="button"
-          onClick={onScan}
-          className="ml-auto bg-plate px-3 py-1 ng-label text-text hover:bg-rule"
-        >
-          SCAN LIBRARIES
-        </button>
+        {onScan && (
+          <button
+            type="button"
+            onClick={onScan}
+            className="ml-auto bg-plate px-3 py-1 ng-label text-text hover:bg-rule"
+          >
+            SCAN LIBRARIES
+          </button>
+        )}
       </section>
     );
   }
@@ -54,13 +72,15 @@ export function PresetBar({ presets, activeId, onSelect, onScan }: Props) {
             {p.name}
           </button>
         ))}
-        <button
-          type="button"
-          onClick={onScan}
-          className="ml-auto ng-label text-dim hover:text-text"
-        >
-          + SCAN LIBRARIES
-        </button>
+        {onScan && (
+          <button
+            type="button"
+            onClick={onScan}
+            className="ml-auto ng-label text-dim hover:text-text"
+          >
+            + SCAN LIBRARIES
+          </button>
+        )}
       </div>
 
       <div className="mt-2 flex w-full min-w-0 items-baseline gap-3">

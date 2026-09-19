@@ -1,0 +1,172 @@
+{
+  "channels": [
+    {
+      "id": "vibrance",
+      "key": "VIB",
+      "name": "VIBRANCE",
+      "range": {
+        "min": 0,
+        "max": 200,
+        "neutral": 100,
+        "step": 1,
+        "unit": "percent"
+      },
+      "stage": "matrix",
+      "fidelity": "approximate",
+      "reachable": null,
+      "note": "realised as a flat saturation gain: a 5x5 affine matrix cannot express saturation-dependent gain"
+    },
+    {
+      "id": "saturation",
+      "key": "SAT",
+      "name": "SATURATION",
+      "range": {
+        "min": 0,
+        "max": 200,
+        "neutral": 100,
+        "step": 1,
+        "unit": "percent"
+      },
+      "stage": "matrix",
+      "fidelity": "exact",
+      "reachable": null,
+      "note": null
+    },
+    {
+      "id": "hue",
+      "key": "HUE",
+      "name": "HUE",
+      "range": {
+        "min": -180,
+        "max": 180,
+        "neutral": 0,
+        "step": 1,
+        "unit": "degrees"
+      },
+      "stage": "matrix",
+      "fidelity": "exact",
+      "reachable": null,
+      "note": null
+    },
+    {
+      "id": "brightness",
+      "key": "BRT",
+      "name": "BRIGHTNESS",
+      "range": {
+        "min": -50,
+        "max": 50,
+        "neutral": 0,
+        "step": 1,
+        "unit": "percent"
+      },
+      "stage": "lut",
+      "fidelity": "exact",
+      "reachable": null,
+      "note": null
+    },
+    {
+      "id": "contrast",
+      "key": "CON",
+      "name": "CONTRAST",
+      "range": {
+        "min": 30,
+        "max": 200,
+        "neutral": 100,
+        "step": 1,
+        "unit": "factor"
+      },
+      "stage": "lut",
+      "fidelity": "exact",
+      "reachable": null,
+      "note": null
+    },
+    {
+      "id": "gamma",
+      "key": "GAM",
+      "name": "GAMMA",
+      "range": {
+        "min": 40,
+        "max": 280,
+        "neutral": 100,
+        "step": 1,
+        "unit": "factor"
+      },
+      "stage": "lut",
+      "fidelity": "clamped",
+      "reachable": [
+        70,
+        140
+      ],
+      "note": "Windows is clamping this range until GdiIcmGammaRange is unlocked"
+    },
+    {
+      "id": "temperature",
+      "key": "TMP",
+      "name": "TEMPERATURE",
+      "range": {
+        "min": -100,
+        "max": 100,
+        "neutral": 0,
+        "step": 1,
+        "unit": "percent"
+      },
+      "stage": "lut",
+      "fidelity": "exact",
+      "reachable": null,
+      "note": null
+    },
+    {
+      "id": "tint",
+      "key": "TNT",
+      "name": "TINT",
+      "range": {
+        "min": -100,
+        "max": 100,
+        "neutral": 0,
+        "step": 1,
+        "unit": "percent"
+      },
+      "stage": "lut",
+      "fidelity": "exact",
+      "reachable": null,
+      "note": null
+    }
+  ],
+  "displays": [
+    {
+      "key": "PREVIEW-1",
+      "name": "DISPLAY 1",
+      "primary": true,
+      "hdr": false
+    },
+    {
+      "key": "PREVIEW-2",
+      "name": "DISPLAY 2",
+      "primary": false,
+      "hdr": false
+    }
+  ],
+  "environment": {
+    "matrixAvailable": true,
+    "lutAvailable": true,
+    "exclusiveFullscreen": false,
+    "hdrActive": false,
+    "gammaRangeUnlocked": false,
+    "colorFiltersActive": false
+  },
+  "enabled": true,
+  "state": {
+    "vibrance": 100,
+    "saturation": 100,
+    "hue": 0,
+    "brightness": 0,
+    "contrast": 100,
+    "gamma": 100,
+    "temperature": 0,
+    "tint": 0
+  },
+  "target": "all",
+  "notices": [
+    "no colour core in this session: nothing here is reaching a display"
+  ]
+}

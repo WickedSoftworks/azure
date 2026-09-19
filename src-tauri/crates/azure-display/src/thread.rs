@@ -280,6 +280,43 @@ mod tests {
         assert!(snap.enabled);
     }
 
+    /// The only test that drives the real backends end to end.
+    ///
+    /// One percent of gamma: enough that a ramp is built and written and
+    /// read back, not enough for anyone to see it happen. On a machine
+    /// with no scanout LUT — anything that is not Windows — the report has
+    /// to say the channel went nowhere rather than claim success, and
+    /// that is what is asserted there.
+    #[test]
+    fn the_real_engine_applies_and_restores_on_this_machine() {
+        use azure_color::{Fidelity, Stage};
+
+        let engine = EngineHandle::spawn();
+        let snap = engine.snapshot().expect("snapshot");
+        assert_eq!(snap.channels.len(), 8);
+
+        let mut state = snap.state;
+        state.set(ChannelId::Gamma, 101);
+        let report = engine.apply(state, LutTarget::All).expect("apply");
+
+        let gamma = report
+            .reports
+            .iter()
+            .find(|r| r.id == ChannelId::Gamma)
+            .expect("gamma is reported");
+
+        match gamma.stage {
+            Some(Stage::Lut) => {
+                assert_eq!(report.stages.len(), 1, "only the LUT should have been written");
+                assert!(report.stages[0].ok, "{:?}", report.stages[0].detail);
+                assert!(report.micros > 0, "an apply that took no time did not happen");
+            }
+            _ => assert_eq!(gamma.fidelity, Fidelity::Unrealised),
+        }
+
+        engine.shutdown().expect("shutdown restores the display");
+    }
+
     #[test]
     fn shutdown_restores_the_display_and_closes_the_handle() {
         let engine = EngineHandle::spawn_mock();
@@ -289,4 +326,50 @@ mod tests {
         engine.shutdown().unwrap();
         assert!(engine.snapshot().is_err());
     }
+}
+
+/// Writes the fixture the interface falls back to in a browser session.
+///
+/// `bun run dev` has no Rust core, so the surface needs something to draw
+/// while the design is being worked on. Generating it here rather than
+/// hand-writing a TypeScript copy keeps one implementation of the routing:
+/// the stage and fidelity in that file are the real router's output for an
+/// ordinary SDR desktop. The display entries are placeholders, and the
+/// interface says so in a banner rather than in small print.
+#[cfg(test)]
+#[test]
+fn export_preview_snapshot() {
+    use azure_color::Environment;
+
+    let environment = Environment::ideal();
+    let state = ColorState::neutral();
+    let snapshot = Snapshot {
+        channels: azure_color::plan(&state, &environment).reports,
+        displays: vec![
+            DisplayInfo {
+                key: "PREVIEW-1".into(),
+                name: "DISPLAY 1".into(),
+                primary: true,
+                hdr: false,
+            },
+            DisplayInfo {
+                key: "PREVIEW-2".into(),
+                name: "DISPLAY 2".into(),
+                primary: false,
+                hdr: false,
+            },
+        ],
+        environment,
+        enabled: true,
+        state,
+        target: LutTarget::All,
+        notices: vec![
+            "no colour core in this session: nothing here is reaching a display".into(),
+        ],
+    };
+
+    let out = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../../src/lib/preview-snapshot.json");
+    let json = serde_json::to_string_pretty(&snapshot).expect("snapshot serialises");
+    std::fs::write(&out, json + "\n").expect("preview snapshot written");
 }

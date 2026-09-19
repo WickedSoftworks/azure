@@ -8,86 +8,190 @@ import { PresetBar } from "@/components/PresetBar";
 import { SignalChain } from "@/components/SignalChain";
 import { StatusStrip } from "@/components/StatusStrip";
 import { WarningRow } from "@/components/WarningRow";
-import { DEMO_PRESETS, DEMO_SESSION } from "@/lib/demo";
 import {
-  CHANNELS,
-  channelsFor,
-  type ChannelId,
-  type ColorState,
-  type Stage,
+  applyState,
+  isTauri,
+  loadSnapshot,
+  restoreDisplay,
+  setEnabled as setEnabledIpc,
+  setLutTarget,
+  unlockGammaRange,
+} from "@/lib/ipc";
+import type {
+  ApplyReport,
+  ChannelId,
+  ChannelReport,
+  ColorState,
+  LutTarget,
+  Snapshot,
+  Stage,
 } from "@/lib/model";
 
+/** How long after the last drag event a change is considered settled. */
+const SETTLE_MS = 350;
+
+const LIVE = isTauri();
+
 export default function App() {
-  const [session, setSession] = useState(DEMO_SESSION);
-  const [presets, setPresets] = useState(DEMO_PRESETS);
+  const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
+  const [channels, setChannels] = useState<ChannelReport[]>([]);
+  const [state, setState] = useState<ColorState | null>(null);
+  const [enabled, setEnabled] = useState(true);
+  const [target, setTarget] = useState<LutTarget>("all");
   const [focused, setFocused] = useState<ChannelId>("vibrance");
   const [bypassed, setBypassed] = useState(false);
   const [pulse, setPulse] = useState(0);
   const [pulseStage, setPulseStage] = useState<Stage | null>(null);
-  const [lutTarget, setLutTarget] = useState<string | "all">("all");
-  const [log, setLog] = useState<LogEntry[]>([
-    { id: 4, time: "21:47:11", kind: "apply", subject: "VIB", detail: "matrix · approximate", latencyUs: 1100 },
-    { id: 3, time: "21:46:58", kind: "warn", subject: "GAM", detail: "ramp clamped by GdiIcmGammaRange", latencyUs: 420 },
-    { id: 2, time: "21:46:58", kind: "apply", subject: "VIB SAT CON GAM", detail: "matrix + lut · 2 displays", latencyUs: 2300 },
-    { id: 1, time: "21:46:57", kind: "activate", subject: "VALORANT", detail: "focused · matched by full path", latencyUs: 1900 },
-  ]);
-  const logId = useRef(5);
+  const [log, setLog] = useState<LogEntry[]>([]);
+
+  const logId = useRef(1);
   const pulseTimer = useRef<number | undefined>(undefined);
-  const gammaUnlockedRef = useRef(DEMO_SESSION.gammaRangeUnlocked);
+  const settleTimer = useRef<number | undefined>(undefined);
+  const inFlight = useRef(false);
+  const queued = useRef<{ state: ColorState; target: LutTarget } | null>(null);
+  const lastReport = useRef<ApplyReport | null>(null);
+  // The bypass listeners are bound once, so they read the live values
+  // through refs rather than closing over the first render's.
+  const bypassedRef = useRef(false);
+  const stateRef = useRef<ColorState | null>(null);
+  const targetRef = useRef<LutTarget>("all");
 
-  const active = useMemo(
-    () => presets.find((p) => p.id === session.activePresetId) ?? presets[0],
-    [presets, session.activePresetId],
-  );
+  const write = useCallback((entry: Omit<LogEntry, "id" | "time">) => {
+    setLog((prev) =>
+      [
+        { id: logId.current++, time: new Date().toTimeString().slice(0, 8), ...entry },
+        ...prev,
+      ].slice(0, 60),
+    );
+  }, []);
 
-  const channels = useMemo(
-    () => channelsFor(session.gammaRangeUnlocked),
-    [session.gammaRangeUnlocked],
-  );
+  useEffect(() => {
+    loadSnapshot().then((snap) => {
+      setSnapshot(snap);
+      setChannels(snap.channels);
+      setState(snap.state);
+      setEnabled(snap.enabled);
+      setTarget(snap.target);
+      for (const notice of snap.notices) {
+        write({ kind: "warn", subject: "CORE", detail: notice });
+      }
+    });
+  }, [write]);
 
-  const focusedChannel = useMemo(
-    () => channels.find((c) => c.id === focused)!,
-    [channels, focused],
-  );
+  /**
+   * Sends the newest state and drops anything stale behind it.
+   *
+   * A slider drag fires far faster than a write to two backends across
+   * however many displays completes, and the engine is one thread. Queuing
+   * every tick would make the screen lag the thumb by whatever the queue
+   * had built up; the only value worth writing is the latest one.
+   */
+  const push = useCallback((next: ColorState, nextTarget: LutTarget) => {
+    if (inFlight.current) {
+      queued.current = { state: next, target: nextTarget };
+      return;
+    }
+    inFlight.current = true;
+    applyState(next, nextTarget)
+      .then((report) => {
+        setChannels(report.reports);
+        lastReport.current = report;
+      })
+      .catch((e: unknown) => {
+        write({ kind: "warn", subject: "CORE", detail: String(e) });
+      })
+      .finally(() => {
+        inFlight.current = false;
+        const pending = queued.current;
+        queued.current = null;
+        if (pending) push(pending.state, pending.target);
+      });
+  }, [write]);
 
   const setChannel = useCallback(
-    (id: ChannelId, v: number) => {
-      const stage = CHANNELS.find((c) => c.id === id)!.stage;
-      setPresets((prev) =>
-        prev.map((p) =>
-          p.id === session.activePresetId
-            ? { ...p, state: { ...p.state, [id]: v } as ColorState }
-            : p,
-        ),
-      );
-      setPulseStage(stage);
-      setPulse((n) => n + 1);
-      const ch = channelsFor(gammaUnlockedRef.current).find((c) => c.id === id)!;
-      setLog((prev) =>
-        [
-          {
-            id: logId.current++,
-            time: new Date().toTimeString().slice(0, 8),
-            kind: ch.fidelity === "clamped" ? ("warn" as const) : ("apply" as const),
-            subject: ch.key,
-            detail:
-              ch.fidelity === "clamped"
-                ? "ramp clamped by GdiIcmGammaRange"
-                : `${stage === "matrix" ? "matrix" : "lut"} · ${ch.fidelity}`,
-            latencyUs: 600 + Math.round(Math.random() * 1800),
-          },
-          ...prev,
-        ].slice(0, 60),
-      );
-      window.clearTimeout(pulseTimer.current);
-      pulseTimer.current = window.setTimeout(() => setPulseStage(null), 640);
+    (id: ChannelId, value: number) => {
+      if (!state) return;
+      const next = { ...state, [id]: value };
+      setState(next);
+
+      const channel = channels.find((c) => c.id === id);
+      if (channel?.stage) {
+        setPulseStage(channel.stage);
+        setPulse((n) => n + 1);
+        window.clearTimeout(pulseTimer.current);
+        pulseTimer.current = window.setTimeout(() => setPulseStage(null), 640);
+      }
+
+      push(next, target);
+
+      // One log line per settled change rather than one per drag event.
+      window.clearTimeout(settleTimer.current);
+      settleTimer.current = window.setTimeout(() => {
+        const report = lastReport.current;
+        const landed = channels.find((c) => c.id === id);
+        const current = report?.reports.find((c) => c.id === id) ?? landed;
+        if (!current) return;
+        const stage =
+          report?.stages.find((s) => s.stage === current.stage)?.backend ??
+          (current.stage ?? "no stage");
+        write({
+          kind: current.fidelity === "exact" ? "apply" : "warn",
+          subject: current.key,
+          detail: current.note ?? `${stage} · ${current.fidelity}`,
+          latencyUs: report?.micros,
+        });
+      }, SETTLE_MS);
     },
-    [session.activePresetId],
+    [channels, push, state, target, write],
+  );
+
+  const applyReport = useCallback(
+    (report: ApplyReport) => {
+      setChannels(report.reports);
+      lastReport.current = report;
+    },
+    [],
+  );
+
+  const toggle = useCallback(() => {
+    const next = !enabled;
+    setEnabled(next);
+    setEnabledIpc(next).then((report) => {
+      applyReport(report);
+      write({
+        kind: next ? "apply" : "restore",
+        subject: next ? "ON" : "OFF",
+        detail: next
+          ? "state re-applied to the display"
+          : "display restored, state kept",
+        latencyUs: report.micros,
+      });
+    });
+  }, [applyReport, enabled, write]);
+
+  const retarget = useCallback(
+    (key: string | "all") => {
+      const next: LutTarget = key === "all" ? "all" : { one: key };
+      setTarget(next);
+      setLutTarget(next).then((report) => {
+        applyReport(report);
+        write({
+          kind: "apply",
+          subject: "LUT",
+          detail:
+            key === "all"
+              ? "targeting every display"
+              : `targeting ${snapshot?.displays.find((d) => d.key === key)?.name ?? key}`,
+          latencyUs: report.micros,
+        });
+      });
+    },
+    [applyReport, snapshot, write],
   );
 
   // Hold to see the original. The effect covers this window too, so an
   // in-app "after" preview would be double-transformed and therefore a
-  // lie; the honest comparison is against the real screen.
+  // lie; the honest comparison is the real screen with Azure stood down.
   useEffect(() => {
     const interactive = (t: EventTarget | null) =>
       t instanceof HTMLElement && (t.tagName === "BUTTON" || t.tagName === "INPUT");
@@ -95,55 +199,105 @@ export default function App() {
     const down = (e: KeyboardEvent) => {
       if (e.code !== "Space" || e.repeat || interactive(e.target)) return;
       e.preventDefault();
+      bypassedRef.current = true;
       setBypassed(true);
+      // Stand down for real. Dimming the interface would be theatre: the
+      // comparison being made is against the desktop behind it.
+      restoreDisplay();
+    };
+    const release = () => {
+      if (!bypassedRef.current) return;
+      bypassedRef.current = false;
+      setBypassed(false);
+      if (stateRef.current) push(stateRef.current, targetRef.current);
     };
     const up = (e: KeyboardEvent) => {
-      if (e.code === "Space") setBypassed(false);
+      if (e.code === "Space") release();
     };
+
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
-    window.addEventListener("blur", () => setBypassed(false));
+    window.addEventListener("blur", release);
     return () => {
       window.removeEventListener("keydown", down);
       window.removeEventListener("keyup", up);
+      window.removeEventListener("blur", release);
     };
-  }, []);
+  }, [push]);
 
   useEffect(() => {
-    gammaUnlockedRef.current = session.gammaRangeUnlocked;
-  }, [session.gammaRangeUnlocked]);
+    stateRef.current = state;
+  }, [state]);
 
-  useEffect(() => () => window.clearTimeout(pulseTimer.current), []);
+  useEffect(() => {
+    targetRef.current = target;
+  }, [target]);
 
-  const gammaClamped = !session.gammaRangeUnlocked;
+  useEffect(() => () => {
+    window.clearTimeout(pulseTimer.current);
+    window.clearTimeout(settleTimer.current);
+  }, []);
+
+  const focusedChannel = useMemo(
+    () => channels.find((c) => c.id === focused) ?? channels[0],
+    [channels, focused],
+  );
+
+  const gamma = channels.find((c) => c.id === "gamma");
+  const [gammaNotice, setGammaNotice] = useState<string | null>(null);
+
+  if (!snapshot || !state || !focusedChannel) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-void">
+        <span className="ng-label">READING THE DISPLAY…</span>
+      </div>
+    );
+  }
+
+  const lutTargetKey: string | "all" = target === "all" ? "all" : target.one;
 
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-void">
       <StatusStrip
-        session={session}
-        preset={active}
-        onToggle={() => setSession((s) => ({ ...s, enabled: !s.enabled }))}
+        environment={snapshot.environment}
+        displays={snapshot.displays}
+        enabled={enabled}
+        live={LIVE}
+        onToggle={toggle}
       />
 
-      {gammaClamped && (
+      {!LIVE && (
+        <WarningRow
+          tone="alert"
+          code="NO COLOUR CORE"
+          message="This is the interface running in a browser. Nothing here is reaching a display. Run bun tauri dev for the real thing."
+        />
+      )}
+
+      {gamma?.fidelity === "clamped" && (
         <WarningRow
           tone="warn"
           code="GAMMA CLAMPED"
-          message="Windows limits gamma ramps until GdiIcmGammaRange is set to 256. Azure works without it at reduced range."
-          actionLabel="UNLOCK FULL RANGE"
+          message={
+            gammaNotice ??
+            "Windows limits gamma ramps until GdiIcmGammaRange is set to 256. Azure works without it at reduced range."
+          }
+          actionLabel={gammaNotice ? undefined : "UNLOCK FULL RANGE"}
           onAction={() => {
-            setSession((s) => ({ ...s, gammaRangeUnlocked: true }));
-            setLog((prev) => [
-              {
-                id: logId.current++,
-                time: new Date().toTimeString().slice(0, 8),
-                kind: "apply" as const,
+            unlockGammaRange().then((outcome) => {
+              const message =
+                outcome.kind === "unlocked"
+                  ? "Written. Windows reads this at sign-in, so the full range is available after you sign out and back in."
+                  : outcome.kind === "needsElevation"
+                    ? "Unlocking the gamma range writes an HKLM registry value and needs an elevated Azure. Restart as administrator to change it."
+                    : outcome.reason;
+              setGammaNotice(message);
+              write({
+                kind: outcome.kind === "unlocked" ? "apply" : "warn",
                 subject: "GAM",
-                detail: "gamma range unlocked · full 0.40-2.80 reachable",
-                latencyUs: 1400,
-              },
-              ...prev,
-            ]);
+                detail: message,
+              });
+            });
           }}
         />
       )}
@@ -162,7 +316,7 @@ export default function App() {
             <ChannelRow
               key={c.id}
               channel={c}
-              value={active.state[c.id]}
+              value={state[c.id]}
               bypassed={bypassed}
               onChange={(v) => setChannel(c.id, v)}
               onFocus={() => setFocused(c.id)}
@@ -170,9 +324,9 @@ export default function App() {
           ))}
 
           <DisplayRows
-            displays={session.displays}
-            lutTarget={lutTarget}
-            onTarget={setLutTarget}
+            displays={snapshot.displays}
+            lutTarget={lutTargetKey}
+            onTarget={retarget}
           />
 
           <EventLog entries={log} />
@@ -180,15 +334,19 @@ export default function App() {
           <div className="ng-rule-t flex flex-wrap gap-x-5 gap-y-1 px-4 py-2">
             <button
               type="button"
-              onClick={() =>
-                setPresets((prev) =>
-                  prev.map((p) =>
-                    p.id === active.id
-                      ? { ...p, state: { ...CHANNELS.reduce((a, c) => ({ ...a, [c.id]: c.neutral }), {}) } as ColorState }
-                      : p,
-                  ),
-                )
-              }
+              onClick={() => {
+                const neutral = channels.reduce(
+                  (acc, c) => ({ ...acc, [c.id]: c.range.neutral }),
+                  {} as ColorState,
+                );
+                setState(neutral);
+                push(neutral, target);
+                write({
+                  kind: "restore",
+                  subject: "ALL",
+                  detail: "every channel back to neutral",
+                });
+              }}
               className="ng-label text-dim hover:text-text"
             >
               RESET TO NEUTRAL
@@ -199,26 +357,21 @@ export default function App() {
         <aside className="ng-rule-t flex min-w-0 flex-col bg-field win:border-t-0 win:min-h-0 win:overflow-y-auto">
           <Monument
             channel={focusedChannel}
-            value={active.state[focused]}
+            value={state[focusedChannel.id]}
             bypassed={bypassed}
           />
           <div className="ng-rule-t">
             <SignalChain
-              state={active.state}
+              channels={channels}
+              state={state}
               pulse={pulse}
               pulseStage={pulseStage}
-              exclusiveFullscreen={session.exclusiveFullscreen}
             />
           </div>
         </aside>
       </main>
 
-      <PresetBar
-        presets={presets}
-        activeId={active.id}
-        onSelect={(id) => setSession((s) => ({ ...s, activePresetId: id }))}
-        onScan={() => {}}
-      />
+      <PresetBar presets={[]} activeId="" onSelect={() => {}} />
 
       <FooterBar bypassed={bypassed} />
     </div>

@@ -1,8 +1,13 @@
 import { cn } from "cn";
-import { FIDELITY_LABEL, formatValue, isInert, type Channel } from "@/lib/model";
+import {
+  FIDELITY_LABEL,
+  formatValue,
+  isInert,
+  type ChannelReport,
+} from "@/lib/model";
 
 interface Props {
-  channel: Channel;
+  channel: ChannelReport;
   value: number;
   bypassed: boolean;
 }
@@ -13,8 +18,9 @@ interface Props {
  * a label beside a slider.
  */
 export function Monument({ channel, value, bypassed }: Props) {
+  const { range } = channel;
   const inert = isInert(channel.fidelity);
-  const offNeutral = value !== channel.neutral;
+  const offNeutral = value !== range.neutral;
 
   return (
     <div className="flex flex-col justify-center px-6 py-5">
@@ -25,13 +31,17 @@ export function Monument({ channel, value, bypassed }: Props) {
         )}
         style={{ fontSize: "var(--ng-monument)" }}
       >
-        {formatValue(channel, value)}
+        {formatValue(range, value)}
       </div>
 
       <div className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <span className="ng-label text-text">{channel.name}</span>
         <span className="ng-label">
-          {channel.stage === "matrix" ? "VIA MATRIX" : "VIA LUT"}
+          {channel.stage === null
+            ? "NO PATH ON THIS MACHINE"
+            : channel.stage === "matrix"
+              ? "VIA MATRIX"
+              : "VIA LUT"}
         </span>
         <span
           className={cn(
@@ -54,11 +64,11 @@ export function Monument({ channel, value, bypassed }: Props) {
         <p className="mt-1 max-w-[46ch]">
           <span className="text-warn">Reaches the panel only between </span>
           <span className="ng-value">
-            {formatValue(channel, channel.reachable[0])}
+            {formatValue(range, channel.reachable[0])}
           </span>
           <span className="text-warn"> and </span>
           <span className="ng-value">
-            {formatValue(channel, channel.reachable[1])}
+            {formatValue(range, channel.reachable[1])}
           </span>
           <span className="text-warn">. The hatched ends do nothing.</span>
         </p>

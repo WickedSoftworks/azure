@@ -28,7 +28,10 @@ pub struct ApplyReport {
     pub reports: Vec<ChannelReport>,
     pub stages: Vec<StageLanding>,
     /// Wall time of the writes, microseconds. The field prints it.
-    pub micros: u64,
+    ///
+    /// u32, not u64: it crosses to JavaScript as a JSON number, and an
+    /// apply that took over an hour is not a thing that happens.
+    pub micros: u32,
     /// True while display state differs from the panel's own defaults.
     pub dirty: bool,
 }
@@ -135,7 +138,7 @@ impl Core {
         ApplyReport {
             reports,
             stages,
-            micros: started.elapsed().as_micros() as u64,
+            micros: started.elapsed().as_micros().min(u32::MAX as u128) as u32,
             dirty: self.dirty,
         }
     }

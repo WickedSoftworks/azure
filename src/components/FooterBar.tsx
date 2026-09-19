@@ -4,19 +4,13 @@ interface Props {
   bypassed: boolean;
 }
 
-const BINDINGS: { keys: string; action: string }[] = [
-  { keys: "ALT+SHIFT+V", action: "TOGGLE" },
-  { keys: "ALT+SHIFT+←/→", action: "CYCLE PRESET" },
-  { keys: "CTRL+ALT+SHIFT+R", action: "RESTORE DISPLAY" },
-];
-
 /**
  * Hold-to-bypass does not sit at reminder rank. Azure ships no in-app
  * preview on purpose — the compositor applies the effect to this window
  * too, so an "after" swatch would be double-transformed and therefore a
  * lie — which makes this the only way to make the comparison the user
- * opened the window to make. It takes the reversal lever; the three
- * reminders beside it stay dim.
+ * opened the window to make. It takes the reversal lever; everything
+ * beside it stays dim.
  */
 export function FooterBar({ bypassed }: Props) {
   return (
@@ -37,14 +31,12 @@ export function FooterBar({ bypassed }: Props) {
         </span>
       </span>
 
-      <div className="ml-auto flex flex-wrap items-center gap-x-5 gap-y-1">
-        {BINDINGS.map((b) => (
-          <span key={b.keys} className="flex items-baseline gap-2">
-            <span className="text-dim">{b.keys}</span>
-            <span className="ng-label">{b.action}</span>
-          </span>
-        ))}
-      </div>
+      {/* The three global hotkeys this bar used to advertise are M7. A
+          reminder for a binding that does not exist is the same kind of
+          lie as a fidelity badge for a stage that never landed. */}
+      <span className="ml-auto text-dim">
+        Global hotkeys arrive with tray residency.
+      </span>
     </footer>
   );
 }
