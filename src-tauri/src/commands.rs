@@ -178,3 +178,18 @@ pub fn show_window(app: AppHandle) -> Answer<()> {
     crate::tray::show_window(&app);
     Ok(())
 }
+
+// ── the library scan ────────────────────────────────────────────────────
+
+/// Walks every launcher's bookkeeping and reports what it found.
+///
+/// Runs off the main thread: it is disk-bound, and a library across
+/// several drives takes long enough that holding the interface still for
+/// it would be felt. It creates nothing — the candidates come back, the
+/// person chooses, and `add_preset` does the rest.
+#[tauri::command]
+pub async fn scan_libraries() -> Answer<azure_scan::ScanReport> {
+    tauri::async_runtime::spawn_blocking(azure_scan::scan)
+        .await
+        .map_err(|e| format!("the scan did not finish: {e}"))
+}

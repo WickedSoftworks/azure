@@ -14,6 +14,8 @@ interface Props {
   onSelect: (id: string) => void;
   onBrowse: () => void;
   onCapture: () => void;
+  onScan: () => void;
+  scanning: boolean;
   onCancelCapture: () => void;
   onRename: (id: string, name: string) => void;
   onUnbind: (id: string) => void;
@@ -44,6 +46,8 @@ export function PresetBar({
   onSelect,
   onBrowse,
   onCapture,
+  onScan,
+  scanning,
   onCancelCapture,
   onRename,
   onUnbind,
@@ -127,6 +131,17 @@ export function PresetBar({
                 className="ng-label text-dim hover:text-text disabled:hover:text-dim"
               >
                 + ADD GAME
+              </button>
+              {/* Back, and now with a scanner behind it. M1 removed this
+                  button rather than keep offering something that did
+                  nothing. */}
+              <button
+                type="button"
+                onClick={onScan}
+                disabled={!live || scanning}
+                className="ng-label text-dim hover:text-text disabled:hover:text-dim disabled:opacity-40"
+              >
+                {scanning ? "SCANNING…" : "SCAN LIBRARIES"}
               </button>
             </>
           )}

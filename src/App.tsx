@@ -7,6 +7,7 @@ import { FooterBar } from "@/components/FooterBar";
 import { HotkeyPanel } from "@/components/HotkeyPanel";
 import { Monument } from "@/components/Monument";
 import { PresetBar } from "@/components/PresetBar";
+import { ScanPanel } from "@/components/ScanPanel";
 import { SignalChain } from "@/components/SignalChain";
 import { StatusStrip } from "@/components/StatusStrip";
 import { WarningRow } from "@/components/WarningRow";
@@ -23,6 +24,7 @@ import {
   renamePreset,
   resetBindings,
   restartElevated,
+  scanLibraries,
   selectPreset,
   setAutostart,
   setBinding,
@@ -35,6 +37,7 @@ import type {
   Action,
   ApplyReport,
   BindingSet,
+  Candidate,
   ChannelId,
   ChannelReport,
   ColorState,
@@ -43,6 +46,7 @@ import type {
   Preset,
   Registration,
   ResidencyView,
+  ScanReport,
   Snapshot,
   Stage,
 } from "@/lib/model";
@@ -92,6 +96,8 @@ export default function App() {
   // Set while an elevated window holds the foreground, which is when
   // Windows UIPI silently refuses to deliver Azure's hotkeys.
   const [blockedBy, setBlockedBy] = useState<string | null>(null);
+  const [scan, setScan] = useState<ScanReport | null>(null);
+  const [scanning, setScanning] = useState(false);
 
   const logId = useRef(1);
   const pulseTimer = useRef<number | undefined>(undefined);
@@ -337,6 +343,51 @@ export default function App() {
     [complain, refresh, write],
   );
 
+  /**
+   * Adds a scanned game without selecting it.
+   *
+   * Selecting would apply its preset, and a player adding four games at
+   * once does not want the display changing under them four times.
+   */
+  const adopt = useCallback(
+    (candidate: Candidate) => {
+      addPreset(candidate.name, candidate.exe)
+        .then(() => {
+          write({
+            kind: "activate",
+            subject: candidate.name,
+            detail: `bound to ${candidate.exe} · found in ${candidate.launcher}`,
+          });
+          return refresh();
+        })
+        .catch(complain("SCAN"));
+    },
+    [complain, refresh, write],
+  );
+
+  const rescan = useCallback(() => {
+    setScanning(true);
+    scanLibraries()
+      .then((report) => {
+        setScan(report);
+        const found = report.candidates.length;
+        write({
+          kind: found > 0 ? "activate" : "warn",
+          subject: "SCAN",
+          detail: `${found} game${found === 1 ? "" : "s"} across ${
+            report.sources.filter((s) => s.outcome.kind === "scanned").length
+          } launcher(s)`,
+        });
+        for (const source of report.sources) {
+          if (source.outcome.kind === "unreadable") {
+            write({ kind: "warn", subject: "SCAN", detail: source.outcome.reason });
+          }
+        }
+      })
+      .catch(complain("SCAN"))
+      .finally(() => setScanning(false));
+  }, [complain, write]);
+
   const browse = useCallback(() => {
     open({
       multiple: false,
@@ -549,6 +600,17 @@ export default function App() {
             onTarget={retarget}
           />
 
+          {scan && (
+            <ScanPanel
+              report={scan}
+              bound={new Set(presets.filter((p) => p.exe).map((p) => p.exe!.toLowerCase()))}
+              busy={scanning}
+              onAdd={adopt}
+              onRescan={rescan}
+              onDismiss={() => setScan(null)}
+            />
+          )}
+
           {residency && (
             <HotkeyPanel
               bindings={residency.bindings}
@@ -630,6 +692,8 @@ export default function App() {
         onSelect={choose}
         onBrowse={browse}
         onCapture={capture}
+        onScan={rescan}
+        scanning={scanning}
         onCancelCapture={cancelCapture}
         onRename={(id, name) => renamePreset(id, name).then(refresh).catch(complain("PRESET"))}
         onUnbind={(id) => bindPreset(id, null).then(refresh).catch(complain("PRESET"))}

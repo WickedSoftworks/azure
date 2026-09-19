@@ -29,6 +29,7 @@ serde_json = "1"
 azure-color = { path = "crates/azure-color" }
 azure-display = { path = "crates/azure-display" }
 azure-settings = { path = "crates/azure-settings" }
+azure-scan = { path = "crates/azure-scan" }
 ts-rs = "12"
 
 

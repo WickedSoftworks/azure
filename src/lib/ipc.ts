@@ -17,6 +17,7 @@ import type {
   LutTarget,
   Registration,
   ResidencyView,
+  ScanReport,
   Snapshot,
 } from "./bindings";
 import previewSnapshot from "./preview-snapshot.json";
@@ -212,3 +213,14 @@ const PREVIEW_RESIDENCY: ResidencyView = {
   elevated: false,
   notices: [],
 };
+
+// ── the library scan ────────────────────────────────────────────────────
+
+/**
+ * Walks every launcher's bookkeeping. Creates nothing: the candidates
+ * come back and the person chooses which become presets.
+ */
+export function scanLibraries(): Promise<ScanReport> {
+  if (!isTauri()) return refuse();
+  return invoke<ScanReport>("scan_libraries");
+}

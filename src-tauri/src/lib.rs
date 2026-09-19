@@ -109,6 +109,7 @@ pub fn run() {
             commands::restart_elevated,
             commands::hide_to_tray,
             commands::show_window,
+            commands::scan_libraries,
         ])
         .build(tauri::generate_context!())
         .expect("error while building Azure")
