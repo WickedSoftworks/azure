@@ -181,19 +181,25 @@
     scrollbar-width: thin;
   }
 
+  /* A dense field has to say out loud that it continues. A 3px inset border
+     left only 4px of visible thumb, which reads as no scrollbar at all, so
+     the gutter is a full-width channel with a hard-edged thumb instead. */
   ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    width: 12px;
+    height: 12px;
   }
   ::-webkit-scrollbar-track {
-    background: transparent;
+    background: var(--ng-void);
+    border-left: 1px solid var(--ng-rule);
   }
   ::-webkit-scrollbar-thumb {
     background: var(--ng-rule-bright);
-    border: 3px solid var(--ng-void);
   }
   ::-webkit-scrollbar-thumb:hover {
     background: var(--ng-dim);
+  }
+  ::-webkit-scrollbar-corner {
+    background: var(--ng-void);
   }
 
   :focus-visible {

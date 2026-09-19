@@ -26,11 +26,12 @@ export default function App() {
   const [pulseStage, setPulseStage] = useState<Stage | null>(null);
   const [lutTarget, setLutTarget] = useState<string | "all">("all");
   const [log, setLog] = useState<LogEntry[]>([
-    { id: 3, time: "21:47:11", kind: "activate", subject: "VALORANT", detail: "focused · matched by full path", latencyUs: 1900 },
-    { id: 2, time: "21:46:58", kind: "warn", subject: "GAM", detail: "ramp clamped by GdiIcmGammaRange", latencyUs: 420 },
-    { id: 1, time: "21:46:57", kind: "apply", subject: "VIB SAT CON GAM", detail: "matrix + lut · 2 displays", latencyUs: 2300 },
+    { id: 4, time: "21:47:11", kind: "apply", subject: "VIB", detail: "matrix · approximate", latencyUs: 1100 },
+    { id: 3, time: "21:46:58", kind: "warn", subject: "GAM", detail: "ramp clamped by GdiIcmGammaRange", latencyUs: 420 },
+    { id: 2, time: "21:46:58", kind: "apply", subject: "VIB SAT CON GAM", detail: "matrix + lut · 2 displays", latencyUs: 2300 },
+    { id: 1, time: "21:46:57", kind: "activate", subject: "VALORANT", detail: "focused · matched by full path", latencyUs: 1900 },
   ]);
-  const logId = useRef(4);
+  const logId = useRef(5);
   const pulseTimer = useRef<number | undefined>(undefined);
   const gammaUnlockedRef = useRef(DEMO_SESSION.gammaRangeUnlocked);
 
@@ -148,7 +149,7 @@ export default function App() {
       )}
 
       <main className="flex min-h-0 flex-1 flex-col overflow-y-auto win:grid win:grid-cols-[minmax(0,1fr)_minmax(0,19rem)] win:overflow-hidden lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
-        <div className="flex min-w-0 flex-col win:min-h-0 win:overflow-hidden win:border-r win:border-r-rule">
+        <div className="flex min-w-0 flex-col win:min-h-0 win:overflow-y-auto win:border-r win:border-r-rule">
           <div className="ng-rule-b grid grid-cols-[3ch_1fr_6ch] sm:grid-cols-[3ch_1fr_6ch_7ch_8ch] items-center gap-x-3 px-4 py-1.5">
             <span className="ng-label">CH</span>
             <span className="ng-label">LEVEL</span>

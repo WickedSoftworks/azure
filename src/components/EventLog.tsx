@@ -28,7 +28,7 @@ const KIND_LABEL: Record<LogEntry["kind"], string> = {
  */
 export function EventLog({ entries }: Props) {
   return (
-    <section className="ng-rule-t flex flex-col win:min-h-0 win:flex-1">
+    <section className="ng-rule-t flex shrink-0 flex-col">
       <div className="ng-rule-b grid grid-cols-[8ch_7ch_1fr_7ch] items-center gap-x-3 px-4 py-1.5">
         <span className="ng-label">TIME</span>
         <span className="ng-label">EVENT</span>
@@ -36,7 +36,7 @@ export function EventLog({ entries }: Props) {
         <span className="ng-label text-right">TOOK</span>
       </div>
 
-      <div className="win:min-h-0 win:flex-1 lg:overflow-y-auto">
+      <div className="max-h-[18rem] overflow-y-auto">
         {entries.length === 0 ? (
           <p className="px-4 py-3 text-dim">
             Nothing applied yet. Move a channel and the core reports what it did.
