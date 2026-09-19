@@ -59,9 +59,9 @@ pub fn real_core() -> (Core, Vec<String>) {
 /// Reads the parts of the environment that are not about the backends
 /// themselves.
 ///
-/// `exclusive_fullscreen` stays false here. The foreground watcher that can
-/// tell is M6, and reporting a guess would be exactly the lie this file
-/// exists to avoid.
+/// `exclusive_fullscreen` is read here rather than guessed: it is probed
+/// on every call, so a game taking the screen between one apply and the
+/// next changes what the matrix channels report.
 pub fn environment(
     displays: &[DisplayInfo],
     matrix_available: bool,
@@ -70,7 +70,7 @@ pub fn environment(
     Environment {
         matrix_available,
         lut_available,
-        exclusive_fullscreen: false,
+        exclusive_fullscreen: exclusive_fullscreen(),
         hdr_active: displays.iter().any(|d| d.hdr),
         gamma_range_unlocked: gamma_range_unlocked(),
         color_filters_active: color_filters_active(),
@@ -78,10 +78,15 @@ pub fn environment(
 }
 
 #[cfg(windows)]
-pub use crate::win::{color_filters_active, gamma_range_unlocked};
+pub use crate::win::{color_filters_active, exclusive_fullscreen, gamma_range_unlocked};
 
 #[cfg(not(windows))]
 pub fn color_filters_active() -> bool {
+    false
+}
+
+#[cfg(not(windows))]
+pub fn exclusive_fullscreen() -> bool {
     false
 }
 
@@ -115,8 +120,13 @@ mod tests {
     }
 
     #[test]
-    fn exclusive_fullscreen_is_never_guessed() {
+    fn exclusive_fullscreen_is_probed_rather_than_inferred_from_the_displays() {
+        // It used to be hardcoded false because nothing could tell. Now it
+        // is read from Windows on every call, and the displays it is
+        // handed have no say in it — a second monitor, or an HDR one, does
+        // not make a game fullscreen.
         assert!(!environment(&[display(false)], true, true).exclusive_fullscreen);
+        assert!(!environment(&[display(true), display(false)], true, true).exclusive_fullscreen);
     }
 
     #[test]

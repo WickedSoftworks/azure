@@ -62,6 +62,13 @@ pub trait RampBackend: Send {
 pub struct Foreground {
     pub path: Option<String>,
     pub exe: String,
+    /// The process refused even a limited-information handle, which in
+    /// practice means it is elevated.
+    ///
+    /// Two consequences, both worth reporting rather than inferring at the
+    /// far end: the preset can only match by executable name, and Windows
+    /// UIPI will not deliver Azure's hotkeys while this window has focus.
+    pub elevated: bool,
 }
 
 /// What came of asking Windows to lift the GDI gamma clamp.

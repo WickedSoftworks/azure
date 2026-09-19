@@ -7,6 +7,8 @@ pub mod backend;
 #[cfg(windows)]
 pub mod win;
 pub mod engine;
+pub mod hotkeys;
+pub mod machine;
 pub mod mock;
 pub mod probe;
 pub mod thread;
@@ -16,6 +18,9 @@ pub use backend::{
     CLAMP_TOLERANCE,
 };
 pub use engine::{ApplyReport, Core, StageLanding};
+pub use hotkeys::{HotkeyEvent, Hotkeys, Outcome, Phase, Registration};
+pub use machine::{autostart_enabled, is_elevated, restart_elevated, set_autostart, HIDDEN_FLAG};
 pub use probe::{environment, real_core, unlock_gamma_range};
 pub use thread::{EngineDown, EngineHandle, Snapshot};
 pub use azure_presets::{ActivationMode, MatchKind, Preset, PresetError};
+pub use azure_settings::{Action, BindingSet, Chord, Conflict, Settings};

@@ -76,6 +76,12 @@ enum Msg {
     AddPreset(String, Option<String>, Sender<Result<String, PresetError>>),
     RemovePreset(String, Sender<Result<ApplyReport, PresetError>>),
     SelectPreset(String, Sender<Result<ApplyReport, PresetError>>),
+    /// Step through the presets in stored order. Carries a direction, not
+    /// an id: the hotkey that sends it has no idea what is in the set.
+    Cycle(i32, Sender<ApplyReport>),
+    /// Flip Azure on or off without first asking what it currently is.
+    /// A read then a write would let a second press land between them.
+    ToggleEnabled(Sender<ApplyReport>),
     RenamePreset(String, String, Sender<Result<(), PresetError>>),
     BindPreset(String, Option<String>, Sender<Result<(), PresetError>>),
     Foreground(Option<String>, String, Sender<ApplyReport>),
@@ -165,6 +171,29 @@ impl Worker {
                 }
             }
         }
+    }
+
+    /// Moves to the next or previous preset in stored order, wrapping.
+    ///
+    /// Cycling is how a player changes preset with a game in front, so it
+    /// visits every preset including the desktop one: the alternative is a
+    /// key that cannot reach the state where the display is left alone.
+    /// The match kind is cleared, because a preset arrived at by pressing
+    /// a key was not matched to anything.
+    fn cycle(&mut self, delta: i32) -> ApplyReport {
+        let count = self.set.presets.len() as i32;
+        if count == 0 {
+            return self.apply_current();
+        }
+        let at = self
+            .set
+            .presets
+            .iter()
+            .position(|p| p.id == self.set.active_id)
+            .unwrap_or(0) as i32;
+        let next = (at + delta).rem_euclid(count) as usize;
+        let id = self.set.presets[next].id.clone();
+        self.activate(&id, None)
     }
 
     fn activate(&mut self, id: &str, how: Option<MatchKind>) -> ApplyReport {
@@ -292,6 +321,18 @@ impl EngineHandle {
                             });
                             w.flush();
                             let _ = reply.send(answer);
+                        }
+                        Msg::Cycle(delta, reply) => {
+                            let report = w.cycle(delta);
+                            let _ = reply.send(report);
+                        }
+                        Msg::ToggleEnabled(reply) => {
+                            w.enabled = !w.enabled;
+                            if !w.enabled {
+                                let _ = w.core.restore();
+                            }
+                            let report = w.apply_current();
+                            let _ = reply.send(report);
                         }
                         Msg::SelectPreset(id, reply) => {
                             let answer = match w.set.get(&id) {
@@ -450,6 +491,15 @@ impl EngineHandle {
         self.ask(|reply| Msg::Foreground(path, exe, reply))
     }
 
+    /// `1` for the next preset, `-1` for the previous one.
+    pub fn cycle(&self, delta: i32) -> Result<ApplyReport, EngineDown> {
+        self.ask(|reply| Msg::Cycle(delta, reply))
+    }
+
+    pub fn toggle_enabled(&self) -> Result<ApplyReport, EngineDown> {
+        self.ask(Msg::ToggleEnabled)
+    }
+
     pub fn snapshot(&self) -> Result<Snapshot, EngineDown> {
         self.ask(Msg::Snapshot)
     }
@@ -573,6 +623,61 @@ mod tests {
         assert_eq!(snap.presets.len(), 1);
         assert_eq!(snap.active_id, DESKTOP_ID);
         assert_eq!(snap.matched_by, None);
+    }
+
+    #[test]
+    fn cycling_visits_every_preset_and_wraps() {
+        let engine = EngineHandle::spawn_mock();
+        let cs2 = bound(&engine, "CS2", "D:\\games\\cs2.exe");
+        let val = bound(&engine, "VALORANT", "D:\\games\\valorant.exe");
+
+        // Starts on the desktop preset, which is first in stored order.
+        assert_eq!(engine.snapshot().unwrap().active_id, DESKTOP_ID);
+        engine.cycle(1).unwrap();
+        assert_eq!(engine.snapshot().unwrap().active_id, cs2);
+        engine.cycle(1).unwrap();
+        assert_eq!(engine.snapshot().unwrap().active_id, val);
+        engine.cycle(1).unwrap();
+        assert_eq!(
+            engine.snapshot().unwrap().active_id,
+            DESKTOP_ID,
+            "cycling has to reach the preset that leaves the display alone"
+        );
+    }
+
+    #[test]
+    fn cycling_backwards_wraps_the_other_way() {
+        let engine = EngineHandle::spawn_mock();
+        let _cs2 = bound(&engine, "CS2", "D:\\games\\cs2.exe");
+        let val = bound(&engine, "VALORANT", "D:\\games\\valorant.exe");
+
+        engine.cycle(-1).unwrap();
+        assert_eq!(engine.snapshot().unwrap().active_id, val);
+    }
+
+    #[test]
+    fn a_preset_arrived_at_by_cycling_is_not_reported_as_matched() {
+        let engine = EngineHandle::spawn_mock();
+        let _cs2 = bound(&engine, "CS2", "D:\\games\\cs2.exe");
+        engine.foreground(Some("D:\\games\\cs2.exe".into()), "cs2.exe".into()).unwrap();
+        assert!(engine.snapshot().unwrap().matched_by.is_some());
+
+        engine.cycle(1).unwrap();
+        assert_eq!(
+            engine.snapshot().unwrap().matched_by,
+            None,
+            "a key press is not a window match"
+        );
+    }
+
+    #[test]
+    fn toggling_flips_whatever_it_finds() {
+        let engine = EngineHandle::spawn_mock();
+        assert!(engine.snapshot().unwrap().enabled);
+        engine.toggle_enabled().unwrap();
+        assert!(!engine.snapshot().unwrap().enabled);
+        engine.toggle_enabled().unwrap();
+        assert!(engine.snapshot().unwrap().enabled);
     }
 
     #[test]

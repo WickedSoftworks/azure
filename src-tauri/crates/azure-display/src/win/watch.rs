@@ -39,6 +39,10 @@ use windows::Win32::UI::WindowsAndMessaging::{
 /// end, not four times on the way.
 const SETTLE_MS: u32 = 300;
 
+/// Windows' code for "you may not have a handle on that". From an
+/// unelevated process asking about an elevated one, this is the answer.
+const ERROR_ACCESS_DENIED: i32 = 5;
+
 type Sink = Box<dyn Fn(Foreground)>;
 
 thread_local! {
@@ -209,23 +213,33 @@ fn resolve(hwnd: HWND) -> Option<Foreground> {
         return None;
     }
 
-    let path = full_path(pid);
+    let (path, refused) = full_path(pid);
     let exe = path
         .as_deref()
         .map(|p| basename(p).to_string())
         .or_else(|| exe_name_from_snapshot(pid))?;
 
-    Some(Foreground { path, exe })
+    Some(Foreground { path, exe, elevated: refused })
 }
 
-/// The process's own image path.
+/// The process's own image path, and whether the refusal to give one was
+/// an access denial.
 ///
 /// `PROCESS_QUERY_LIMITED_INFORMATION` is the narrowest right that answers
 /// this question, and notably not `PROCESS_VM_READ`. Elevated games refuse
-/// even this, which is why the caller has a fallback rather than an error.
-fn full_path(pid: u32) -> Option<String> {
+/// even this, which is why the caller has a fallback rather than an error
+/// — and why the denial itself is worth returning: it is the only signal
+/// Azure gets that UIPI is about to eat its hotkeys.
+fn full_path(pid: u32) -> (Option<String>, bool) {
     // SAFETY: opens a handle for one documented query and closes it below.
-    let handle: HANDLE = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) }.ok()?;
+    let handle: HANDLE = match unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) }
+    {
+        Ok(h) => h,
+        Err(e) => {
+            let denied = e.code().0 & 0xFFFF == ERROR_ACCESS_DENIED;
+            return (None, denied);
+        }
+    };
 
     let mut buf = vec![0u16; 1024];
     let mut len = buf.len() as u32;
@@ -239,7 +253,7 @@ fn full_path(pid: u32) -> Option<String> {
         let _ = CloseHandle(handle);
     }
 
-    ok.then(|| String::from_utf16_lossy(&buf[..len as usize]))
+    (ok.then(|| String::from_utf16_lossy(&buf[..len as usize])), false)
 }
 
 /// The executable name without opening the process at all.

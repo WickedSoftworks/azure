@@ -1,6 +1,10 @@
 //! The Windows half. Nothing outside this module calls a Win32 function.
 
+mod autostart;
 mod displays;
+mod elevate;
+mod fullscreen;
+mod hotkey;
 mod lut;
 mod magnifier;
 mod watch;
@@ -9,6 +13,10 @@ pub use displays::{
     color_filters_active, enumerate_adapters, enumerate_displays, gamma_range_unlocked,
     unlock_gamma_range,
 };
+pub use autostart::{autostart_enabled, set_autostart, HIDDEN_FLAG};
+pub use elevate::{is_elevated, restart_elevated};
+pub use fullscreen::exclusive_fullscreen;
+pub use hotkey::HotkeyThread;
 pub use lut::GdiRamp;
 pub use magnifier::MagnifierMatrix;
 pub use watch::{current_foreground, Watcher};
