@@ -13,3 +13,6 @@ pub mod ops;
 
 pub use matrix::Mat5;
 pub use ops::{AffineOp, MixOp, OpGroup, PowerOp};
+pub mod ramp;
+
+pub use ramp::Ramp;
