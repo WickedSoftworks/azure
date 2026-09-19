@@ -1,0 +1,9 @@
+[package]
+name = "azure-color"
+version = "0.1.0"
+edition = "2021"
+description = "Colour maths and capability routing for Azure. No OS dependency."
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+ts-rs = "12"
