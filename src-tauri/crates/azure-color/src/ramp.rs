@@ -69,6 +69,16 @@ impl Ramp {
         worst
     }
 
+    /// The inverse of `as_gdi`, for turning a readback back into a ramp
+    /// that `max_deviation` can measure.
+    pub fn from_gdi(flat: &[u16; 768]) -> Ramp {
+        let mut out = [[0u16; 256]; 3];
+        for c in 0..3 {
+            out[c].copy_from_slice(&flat[c * 256..c * 256 + 256]);
+        }
+        Ramp(out)
+    }
+
     pub fn as_gdi(&self) -> [u16; 768] {
         let mut flat = [0u16; 768];
         for c in 0..3 {
@@ -182,6 +192,15 @@ mod tests {
         b.0[1][7] = b.0[1][7].saturating_add(900);
         assert_eq!(a.max_deviation(&b), 900);
         assert_eq!(a.max_deviation(&a), 0);
+    }
+
+    #[test]
+    fn gdi_layout_round_trips() {
+        let r = Ramp::build(
+            &AffineOp { brightness: 1.1, contrast: 1.3, gains: [1.2, 1.0, 0.8] },
+            &PowerOp { gamma: 1.4 },
+        );
+        assert_eq!(Ramp::from_gdi(&r.as_gdi()), r);
     }
 
     #[test]
