@@ -1,0 +1,11 @@
+[package]
+name = "azure-presets"
+version = "0.1.0"
+edition = "2021"
+description = "Presets, their matching rules, and where they are kept."
+
+[dependencies]
+azure-color = { path = "../azure-color" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+ts-rs = "12"

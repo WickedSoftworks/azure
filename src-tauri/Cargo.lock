@@ -247,6 +247,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "azure-presets"
+version = "0.1.0"
+dependencies = [
+ "azure-color",
+ "serde",
+ "serde_json",
+ "ts-rs",
+]
+
+[[package]]
 name = "base64"
 version = "0.21.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
